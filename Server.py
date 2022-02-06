@@ -1,173 +1,220 @@
 import traceback
 import socket
 import threading
-import sys
 import pickle
 from User import User
 from Message import Message
+from Codes import Codes
 
-SIZE = 4096
-activeUsers = []
-server_active = True
-serverName = "Server"
-
-def main():
-    hostname = sys.argv[1]
-    port = input("Listening port: ")
+class Server:
+    SIZE = 4096
+    
     server_active = True
+    hostname = ""
+    port = 7779
+    serversocket = False
+    serverName = ""
+    activeUsers = []
+    rooms = []
+
+    # init a server. Create socket, listening threads, await text input
+    def __init__(self, hostname, port, serverName):
+        self.serverName = serverName
+
+        # create an INET, STREAMing socket
+        self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if (self.hostname == ""):
+            self.hostname = socket.gethostname()
+
+        if (port):
+            self.port = port
+
+        # bind the socket to a public host, and a well-known port
+        self.serversocket.bind((hostname, self.port))
+        print("Socket Bound: %s:%s" % (hostname, self.port))
+
+        # become a server socket
+        self.serversocket.listen()
+        
+        # spawn thread to listen to connections
+        connectionlistening = threading.Thread(
+            target=self.listenForConnections
+        )
+        connectionlistening.setName("connectionListener")
+        connectionlistening.start()
+        
+        #terminal loop. Listens to text input via server terminal
+        while self.server_active:
+            message = input("")
+            self.handleCommand(message)
+
+    # wait for clients to connect and their info to lists
+    def listenForConnections(self):
+        print("%s Now listening for new clients in thread" % Codes.STR_INFO)
+        while self.server_active:
+            # accept connections from outside
+            print("%s Awaiting connections..." % Codes.STR_INFO)
+            try:
+                #clientsocket is type socket
+                #address[0] is IP address
+                #address[1] is port number
+                (clientsocket, address) = self.serversocket.accept()
+
+                print("%s Client connected! %s" % (Codes.STR_INFO, address))
+                newUser = self.registerUser(address[0],address[1],clientsocket)
+
+                listening = threading.Thread(
+                    target=self.listenToClient,
+                    args=(newUser,)
+                )
+                listening.setName(address[1])
+                listening.start()
+            except OSError:
+                print("%s Client-listening thread function closing." % Codes.STR_WARN)
+                return
+        
+
+    def listenToClient(self, user):
+        # address = IPv4
+        # port = port num
+        # username = string
+        # id = time in ms
+        # connectTime = formatted string
+        status = self.listenForUsername(user)
+        if (not status):
+            self.unregisterUser(user)
+            return
+        print("%s Now listening for messages for %s"
+            % (Codes.STR_INFO, user.username)
+        )
+        while self.server_active:
+            try:
+                message = self.receiveMessage(user.socket)
+                if message.messageType == Codes.MSG_TEXT:
+                    
+                    self.broadcast(message)
+                if message.messageType == Codes.MSG_ROOM:
+                    print(message.content)
+                if message.messageType == Codes.MSG_QUIT:
+                    self.unregisterUser(user)
+                    return
+            except OSError:
+                print("%s Connection for %s likely closed"
+                    % (Codes.STR_WARN, user.username))
+                self.unregisterUser(user)
+                return
+
+    def listenForUsername(self, user):
+        while self.server_active:
+            try:
+                print("[INFO] Listening for username from", user.address)
+                message = self.receiveMessage(user.socket)
+                if (message.messageType != Codes.MSG_NAME):
+                    assert Exception("Unexpected message from client")
+                submittedName = message.content
+                print("%s Submitted name from %s is %s"
+                    % (Codes.STR_INFO, user.address, submittedName))
+
+                #check all usernames to see if the name is taken
+                nameTaken = False
+                for u in self.activeUsers:
+                    if u.username == submittedName:
+                        print("%s Username already in use: %s"
+                            % (Codes.STR_WARN, submittedName))
+                        nameTaken = True
+                        break
+                #name is taken, client needs to retry
+                if nameTaken:
+                    self.sendMessage(
+                        Message(self.serverName,
+                            Codes.MSG_SIG,
+                            False), user.socket
+                        )
+                #name is not taken, set client to that username
+                else:
+                    user.username = submittedName
+                    self.sendMessage(
+                        Message(
+                            self.serverName,
+                            Codes.MSG_SIG,
+                            True
+                        ), user.socket)
+                    return True
+            except OSError:
+                print("%s Connection for %s likely closed"
+                    % (Codes.STR_WARN, user.username))
+                self.unregisterUser(user.address[0])
+                return
+            except:
+                return False
+
+
+    def broadcast(self, message):
+        print("Broadcasting...")
+        for user in self.activeUsers:
+            try:
+                self.sendMessage(message, user.socket)
+            except:
+                print("%s Unable to broadbase to %s"
+                    % (Codes.STR_ERR ,user.username))
+                self.unregisterUser(user.address)
+
+    def registerUser(self, address, port, socket):
+        newUser = User(address, port, socket)
+        self.activeUsers.append(newUser)
+        print("%s new user added to client list" % Codes.STR_INFO)
+        return newUser
+
+    def unregisterUser(self, user):
+        for u in self.activeUsers:
+            if u is user:
+                try:
+                    self.activeUsers.remove(user)
+                    print(user.username + " unregestered")
+                    return
+                except ValueError:
+                    print("%s %s was not found in active user list"
+                        % (Codes.STR_ERR, user.username))
+
+    def sendMessage(self, messageObject, socket):
+        messageByte = pickle.dumps(messageObject)
+        socket.send(messageByte)
+        print("%s Message Sent: [%s] %s" %
+            (Codes.STR_INFO ,messageObject.messageType, messageObject.content))
+        return
+
+    def receiveMessage(self, usersocket):
+        bytes = usersocket.recv(self.SIZE)
+        message = pickle.loads(bytes)
+        print(
+            "[INFO] Message Received:",
+            "\n\tSent", message.timeSent,
+            "\n\tFrom", message.sender,
+            "\n\tType", message.messageType,
+            "\n\tContent", message.content
+        )
+        return message
     
-    if (port == ""):
-        port = 7779
-        print("No port specified, using default " + str(port))
-
-    # create an INET, STREAMing socket
-    serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    if (hostname == ""):
-        hostname = socket.gethostname()
-
-    # bind the socket to a public host, and a well-known port
-    serversocket.bind((hostname, int(port)))
-    print("Socket Bound:", (hostname, port))
-
-    # become a server socket
-    serversocket.listen()
-    
-
-    connectionlistening = threading.Thread(
-        target=listenForConnections,
-        args=(serversocket,)
-    )
-    connectionlistening.setName("connListener")
-    connectionlistening.start()
-    
-    while server_active:
-        message = input("")
-        if (message == "quit"):
-            server_active = False
-            serversocket.close()
+    def handleCommand(self, text):
+        if (text == "quit"):
+            self.server_active = False
+            self.serversocket.close()
             for t in threading.enumerate():
                 if (threading.current_thread() != t):
                     t.join()
-            print("[INFO] All threads joined. Server program closing gracefully.")
+            print("%s All threads joined. Server program closing gracefully." % Codes.STR_INFO)
             exit(0)
-        if (message == "list"):
-            listConnectedClients()
-
-def listenForConnections(serversocket):
-    print("[INFO] Now listening for new clients in thread")
-    while server_active:
-        # accept connections from outside
-        print("[INFO] Awaiting connections...")
-        try:
-            (clientsocket, address) = serversocket.accept()
-            print("[INFO] Client connected!", address)
-            newUser = registerUser(address[0],address[1], clientsocket)
-
-            listening = threading.Thread(
-                target=listenToClient,
-                args=(newUser,)
-            )
-            listening.setName(address[1])
-            listening.start()
-        except OSError:
-            print("[INFO] Client-listening thread function closing.")
-            return
+        if (text == "list"):
+            for u in self.activeUsers:
+                print(u.username,u.address)
+        if (text == "bfm"):
+            text = text[3:]
+            commandList = text.split(" ")
+            self.bruteForceMessage(commandList[1],commandList[2])
     
-
-def listenToClient(user):
-    # address = IPv4
-    # port = port num
-    # username = string
-    # id = time in ms
-    # connectTime = formatted string
-    listenForUsername(user)
-    print("[INFO] Now listening for messages:", user.username)
-    while server_active:
-        try:
-            message = receiveMessage(user.socket)
-            if message.messageType == "chat":
-                broadcast(message, activeUsers)
-        except OSError:
-            print("[WARN] Connection likely closed:" + user.address[0])
-            unregisterUser(user.address[0])
-            return
-
-def listenForUsername(user):
-    while server_active:
-        try:
-            print("[INFO] Listening for username from", user.address)
-            message = receiveMessage(user.socket)
-            submittedName = message.content
-            print("[INFO] Submitted name from",user.address, submittedName)
-            nameTaken = False
-            for u in activeUsers:
-                if u.username == submittedName:
-                    print("[WARN] Username already in use: "+submittedName)
-                    nameTaken = True
-                    break
-            if nameTaken:
-                #name is taken, client needs to retry
-                sendMessage(Message(serverName,"signal",False), u.socket)
-                pass
-            else:
-                #name is not taken, set client to that username
-                u.username = submittedName
-                sendMessage(Message(serverName,"signal",True), u.socket)
-                return
-        except OSError:
-            print("[WARN] Connection likely closed:" + user.address)
-            unregisterUser(user.address)
-            return
-
-
-def broadcast(message, users):
-    for user in users:
-        try:
-            sendMessage(message, user.socket)
-        except:
-            print("[WARN] Broadcast fail!\n"+traceback.format_exc())
-            unregisterUser(user.address)
-
-def registerUser(address, port, socket):
-    newUser = User(address, port, socket)
-    activeUsers.append(newUser)
-    print("[INFO] new user added to client list")
-    return newUser
-
-def unregisterUser(address):
-    for user in activeUsers:
-        if user.address == address:
-            print(user.username + " unregestered")
-            activeUsers.remove(user)
-            break
-    print("[INFO] unregister done.")
-
-def sendMessage(messageObject, socket):
-    messageByte = pickle.dumps(messageObject)
-    socket.send(messageByte)
-    print(
-        "[INFO] Message Sent:",
-        messageObject.messageType,
-        messageObject.content
-    )
-    return
-
-def receiveMessage(socket):
-    bytes = socket.recv(SIZE)
-    message = pickle.loads(bytes)
-    print(
-        "[INFO] Message Received:",
-        "\n\tSent", message.timeSent,
-        "\n\tFrom", message.sender,
-        "\n\tType", message.messageType,
-        "\n\tContent", message.content
-    )
-    return message
-
-    #server commands
-def listConnectedClients():
-    for u in activeUsers:
-        print(u.username,u.address)
-
-if __name__ == '__main__':
-    main()
+    def bruteForceMessage(self, messageType, content, user):
+        target = False
+        for u in self.activeUsers:
+            if u.username == user:
+                target = u
+        self.sendMessage(Message("Server", messageType, content), target.socket)

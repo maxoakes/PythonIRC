@@ -1,0 +1,88 @@
+Internet Relay Chat Class Project
+Draft-irc-pdx-cs594-00.txt
+
+Status of this Memo
+
+This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79. This document may not be modified, and derivative works of it may not be created, except to publish it as an RFC and to translate it into languages other than English.
+Internet-Drafts are working documents of the Internet Engineering Task Force (IETF), its areas, and its working groups. Note that other groups may also distribute working documents as Internet-Drafts.
+
+Internet-Drafts are draft documents valid for a maximum of six months and may be updated, replaced, or obsoleted by other documents at any time. It is inappropriate to use Internet-Drafts as reference material or to cite them other than as "work in progress."
+
+The list of current Internet-Drafts can be accessed at http://www.ietf.org/ietf/1id-abstracts.txt
+
+The list of Internet-Draft Shadow Directories can be accessed at http://www.ietf.org/shadow.html
+
+This Internet-Draft will expire on Fail 1, 0000.
+
+Copyright Notice
+
+Copyright (c) 0000 IETF Trust and the persons identified as the document authors. All rights reserved.
+
+This document is subject to BCP 78 and the IETF Trust's Legal Provisions Relating to IETF Documents (http://trustee.ietf.org/license-info) in effect on the date of publication of this document. Please review these documents carefully, as they describe your rights and restrictions with respect to this document. Code Components extracted from this document must include Simplified BSD License text as described in Section 4.e of the Trust Legal Provisions and are provided without warranty as described in the Simplified BSD License.
+
+Abstract
+
+This memo describes the communication protocol for an IRC-style client/server system for the Internetworking Protocols class at Portland State University.
+
+Table of Contents
+1. Introduction
+2. Conventions used in this document
+3. Basic Information
+
+4. Message Infrastructure
+4.1. Message Object
+4.2. Message Types
+4.3. Usage
+
+5. Client Messages
+5.1. Login
+5.2. Listening
+5.2.1. Text Content
+5.2.2. Server Info
+5.3. Sending
+5.3.1 Text Content
+5.4 Commands
+5.4.1 Creating and Joining Rooms
+5.4.2 Room Info
+5.4.3 Leaving and Deleting Rooms
+5.4.3 Private Messages
+6. Server Messages
+6.1. Listening
+6.2. Broadcasting
+6.2.1 Private Messages
+6.2.2. Field definitions
+6.3. Room Management
+6.3.1 Room Objects
+7. Error Handling
+8. Conclusion & Future Work
+9. Security Considerations
+10. IANA Considerations
+10.1. Normative References
+11. Acknowledgments
+
+
+
+9. Security Considerations 
+ 
+Messages sent using this system have no protection against inspection, tampering or outright forgery. The server sees all messages that are sent through the use of this service. 'Private' messaging may be easily intercepted by a 3rd party that is able to capture network traffic. Users wishing to use this system for secure communication should use/implement their own user-to-user encryption protocol.  
+ 
+10. IANA Considerations 
+ 
+None 
+ 
+10.1. Normative References 
+
+<References used>
+ 
+13. Acknowledgments 
+ 
+<Acknowledgments>
+
+
+Authors' Addresses 
+ 
+Maxwell Oakes
+Portland State University Computer Science 
+1825 SW Broadway, Portland, OR 97201 
+ 
+Email: maxoakes@pdx.edu
