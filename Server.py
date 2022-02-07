@@ -7,9 +7,7 @@ from Message import Message
 from Room import Room
 from Codes import Codes
 
-class Server:
-    SIZE = 4096
-    
+class Server:    
     server_active = True
     hostname = ""
     port = 7779
@@ -98,10 +96,62 @@ class Server:
         while self.server_active:
             try:
                 message = self.receiveMessage(clientsocket)
+                #if it is a simple text message, broadcast it to their rooms
                 if message.messageType == Codes.MSG_TEXT:
                     self.broadcast(message)
+                    continue
+                #if it is not a text message, it is a command
                 if message.messageType == Codes.MSG_ROOM:
-                    print("room request")
+                    if message.content == Codes.ROOM_LIST:
+                        roomList = list(self.rooms.keys())
+                        self.sendMessage(
+                            Message(
+                                self.serverName, Codes.MSG_ROOM, (Codes.ROOM_LIST, roomList)),
+                                clientsocket)
+                        continue
+                    if isinstance(message.content, tuple):
+                        # if room join is requested
+                        if message.content[0] == "join":
+                            if message.content[1] in self.rooms.keys():
+                                self.addUserToRoom(message.sender, message.content[1])
+                            else:
+                                self.sendMessage(Message(
+                                    self.serverName, Codes.MSG_ROOM, (Codes.ROOM_JOIN, Codes.ACT_FAIL)),
+                                    clientsocket)
+
+                        # if room leave is requested
+                        if message.content[0] == "leave":
+                            if message.content[1] in self.rooms.keys():
+                                if message.sender in self.rooms[message.content[1]]:
+                                    try:
+                                        self.rooms[message.content[1]].remove(message.sender)
+                                    except:
+                                        print("%s Failed to remove user from room" % Codes.STR_ERR)
+                                        self.sendMessage(Message(
+                                            self.serverName, Codes.MSG_ROOM, (Codes.ROOM_LEAVE, Codes.ACT_FAIL)),
+                                            clientsocket)
+                                else:
+                                    print("%s User tried to be removed from room they were not in" % Codes.STR_ERR)
+                                    self.sendMessage(Message(
+                                        self.serverName, Codes.MSG_SIG, Codes.ACT_FAIL),
+                                        clientsocket)
+                            else:
+                                self.sendMessage(Message(
+                                    self.serverName, Codes.MSG_SIG, Codes.ACT_FAIL),
+                                    clientsocket)
+
+                        # if room creation is requested
+                        if message.content[0] == "create":
+                            if message.content[1] not in self.rooms.keys():
+                                self.createRoom(message.content[1], message.sender, "A new room")
+                                self.sendMessage(Message(
+                                    self.serverName, Codes.MSG_SIG, Codes.ACT_SUCCESS),
+                                    clientsocket)
+                            else:
+                                self.sendMessage(Message(
+                                    self.serverName, Codes.MSG_SIG, Codes.ACT_FAIL),
+                                    clientsocket)
+                                
                 if message.messageType == Codes.MSG_QUIT:
                     self.unregisterUser(username)
                     return
@@ -127,8 +177,8 @@ class Server:
 
                 #check all usernames to see if the name is taken
                 nameTaken = False
-                for u in self.activeUsers:
-                    if u.username == submittedName:
+                for user in self.activeUsers:
+                    if user == submittedName:
                         print("%s Username already in use: %s"
                             % (Codes.STR_WARN, submittedName))
                         nameTaken = True
@@ -169,12 +219,17 @@ class Server:
                 % (Codes.STR_ERR, user))
 
     def broadcast(self, message):
-        for user in self.activeUsers:
+        toRooms = message.rooms
+        print("going to rooms %s" % toRooms)
+        toUsers = []
+        for room in toRooms:
+            toUsers.extend(self.rooms[room].users)
+        print("going to users %s" % toUsers)
+        for user in toUsers:
             try:
                 self.sendMessage(message, self.activeUsers[user].socket)
             except:
-                print("%s Unable to broadbase to %s"
-                    % (Codes.STR_ERR ,user))
+                print("%s Unable to broadbase to %s" % (Codes.STR_ERR ,user))
                 self.unregisterUser(user)
 
     def sendMessage(self, messageObject, socket):
@@ -185,7 +240,7 @@ class Server:
         return
 
     def receiveMessage(self, usersocket):
-        bytes = usersocket.recv(self.SIZE)
+        bytes = usersocket.recv(Codes.PACKET_SIZE)
         message = pickle.loads(bytes)
         print("%s Received %s" % (Codes.STR_INFO, message))
         return message
@@ -199,9 +254,6 @@ class Server:
                     t.join()
             print("%s All threads joined. Server program closing gracefully." % Codes.STR_INFO)
             exit(0)
-        if (text == "list"):
-            for u in self.activeUsers:
-                print(u.username,u.address)
 
     def addUserToRoom(self, user, room):
         self.rooms[room].joinRoom(user)
@@ -218,4 +270,8 @@ class Server:
             (self.activeUsers[user], self.activeUsers[user].rooms))
         print("%s now has users:" % (self.rooms[room]))
         for u in self.rooms[room].users:
-            print("\t%s" % u)
+            print("  %s" % u)
+
+    def createRoom(self, name, creator, desc):
+        self.rooms[name] = Room(name, creator)
+        self.rooms[name].setDescription(desc)

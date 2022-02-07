@@ -5,7 +5,6 @@ from Message import Message
 from Codes import Codes
 
 class Client:
-    SIZE = 4096
     username = Codes.NOT_INIT
     mySocket = False
     rooms = []
@@ -29,7 +28,7 @@ class Client:
         self.awaitRoomEntry()
 
         # spawn listening thread
-        listening = threading.Thread(target = self.listenForServer)
+        listening = threading.Thread(target = self.listenForMessage)
         listening.start()
 
         #terminal input loop
@@ -52,24 +51,37 @@ class Client:
                         text,
                         rooms=self.rooms))
             except ConnectionResetError:
-                print("The server has been closed")
-                self.mySocket.close()
-                self.mySocket = False
-                return
+                return self.gracefulClose()
             except KeyboardInterrupt:
                 self.handleCommand("quit")
                 print("Telling server of closing connection...")
                 return
 
     # thread function for listening for messages from server
-    def listenForServer(self):
+    def listenForMessage(self):
         while self.mySocket:
             try:
-                self.receiveMessage()
+                message = self.receiveMessage()
+                # we have an update on rooms
+                if (message.messageType == Codes.MSG_ROOM):
+                    print("room message received")
+                    #print room list from server
+                    if (message.content[0] == Codes.ROOM_LIST and message.content[1]):
+                        print(message.content[1])
+                    #join room successful
+                    if (message.content[0] == Codes.ROOM_JOIN and message.content[1]):
+                        print("Successfully joined %s" % message.content[1])
+                        self.rooms.append(message.content[1])
+                    #create room successful
+                    if (message.content[0] == Codes.ROOM_CREATE and message.content[1]):
+                        print("Successfully created %s" % message.content[1])
+                    elif (not message.content[1]):
+                        print("room action failed")
+
             except socket.timeout:
                 pass
             except (OSError, ConnectionResetError):
-                return
+                return self.gracefulClose()
 
     # input a username and submit it to the server
     def login(self):
@@ -91,8 +103,7 @@ class Client:
                 else: #username denied
                     print("name already taken, try another")
             except ConnectionResetError:
-                print("The server has been closed")
-                return False
+                return self.gracefulClose()
 
     def awaitRoomEntry(self):
         message = self.receiveMessage()
@@ -102,8 +113,6 @@ class Client:
                 self.rooms.append(message.content[1])
                 return
             
-
-
     # send a message object to the server
     def sendMessage(self, messageObject):
         messageByte = pickle.dumps(messageObject)
@@ -114,16 +123,9 @@ class Client:
 
     # await a message from the server
     def receiveMessage(self):
-        bytes = self.mySocket.recv(self.SIZE)
+        bytes = self.mySocket.recv(Codes.PACKET_SIZE)
         message = pickle.loads(bytes)
-        print("%s Message Received: \
-            \n\tSent %s\
-            \n\tFrom %s\
-            \n\tType %s\
-            \n\tContent %s\
-            \n\tRooms %s"
-            % (Codes.STR_INFO, message.timeSent, message.sender,
-                message.messageType, message.content, message.rooms))
+        print("%s Received %s" % (Codes.STR_INFO, message))
         return message
 
     def handleCommand(self, command):
@@ -155,9 +157,33 @@ class Client:
                     print(self.rooms)
                     return
                 if commandParts[1] == "list":
-                    return
+                    try:
+                        self.sendMessage(
+                            Message(
+                                self.username,
+                                Codes.MSG_ROOM,
+                                Codes.ROOM_LIST))
+                        print("awaiting room list")
+                        return
+                    except ConnectionResetError:
+                        self.gracefulClose()
+                        return
             if (len(commandParts) == 3):
                 action = commandParts[1]
                 name = commandParts[2]
-                print("going to %s the room %s" % (action, name))
+                try:
+                    self.sendMessage(
+                        Message(
+                            self.username,
+                            Codes.MSG_ROOM,
+                            (action, name)))
+                except ConnectionResetError:
+                    self.gracefulClose()
+                    return
             return
+
+    def gracefulClose(self):
+        print("Leaving server via ConnectionResetError")
+        self.mySocket.close()
+        self.mySocket = False
+        return False
