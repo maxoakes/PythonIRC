@@ -10,3 +10,9 @@ class Codes(object):
     MSG_ROOM = "room"
     MSG_SIG = "signal"
     MSG_QUIT = "quit"
+
+    ROOM_DEFAULT_NAME = "Lobby"
+    ROOM_JOIN = "join"
+    ROOM_CREATE = "create"
+    ROOM_LEAVE = "leave"
+    ROOM_DELETE = "delete"

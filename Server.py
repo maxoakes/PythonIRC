@@ -4,6 +4,7 @@ import threading
 import pickle
 from User import User
 from Message import Message
+from Room import Room
 from Codes import Codes
 
 class Server:
@@ -14,8 +15,8 @@ class Server:
     port = 7779
     serversocket = False
     serverName = ""
-    activeUsers = []
-    rooms = []
+    activeUsers = {}
+    rooms = {}
 
     # init a server. Create socket, listening threads, await text input
     def __init__(self, hostname, port, serverName):
@@ -50,70 +51,79 @@ class Server:
 
     # wait for clients to connect and their info to lists
     def listenForConnections(self):
+
+        #create the default room
+        self.rooms[Codes.ROOM_DEFAULT_NAME] = \
+            Room(Codes.ROOM_DEFAULT_NAME,self.serverName,False)
+        self.rooms[Codes.ROOM_DEFAULT_NAME].setDescription("The default room")
+
         print("%s Now listening for new clients in thread" % Codes.STR_INFO)
         while self.server_active:
             # accept connections from outside
             print("%s Awaiting connections..." % Codes.STR_INFO)
             try:
-                #clientsocket is type socket
-                #address[0] is IP address
-                #address[1] is port number
                 (clientsocket, address) = self.serversocket.accept()
-
+                userConnectionInfo = (clientsocket, address[0], address[1])
                 print("%s Client connected! %s" % (Codes.STR_INFO, address))
-                newUser = self.registerUser(address[0],address[1],clientsocket)
 
                 listening = threading.Thread(
                     target=self.listenToClient,
-                    args=(newUser,)
+                    args=(userConnectionInfo[1],
+                        userConnectionInfo[2],
+                        userConnectionInfo[0])
                 )
-                listening.setName(address[1])
+                listening.setName(userConnectionInfo[2])
                 listening.start()
             except OSError:
                 print("%s Client-listening thread function closing." % Codes.STR_WARN)
                 return
         
-
-    def listenToClient(self, user):
-        # address = IPv4
-        # port = port num
-        # username = string
-        # id = time in ms
-        # connectTime = formatted string
-        status = self.listenForUsername(user)
-        if (not status):
-            self.unregisterUser(user)
+    #listen for messages from client after getting a username from them
+    def listenToClient(self, address, port, clientsocket):
+        #obtain username
+        username = self.listenForUsername(clientsocket)
+        if (not username):
+            print("error status returned in username")
+            self.unregisterUser(username)
             return
+
+        #add the user to the active user list
+        self.registerUser(address, port, clientsocket, username)
         print("%s Now listening for messages for %s"
-            % (Codes.STR_INFO, user.username)
-        )
+            % (Codes.STR_INFO, username))
+
+        # put new user in default room
+        self.addUserToRoom(username, Codes.ROOM_DEFAULT_NAME)
+        
         while self.server_active:
             try:
-                message = self.receiveMessage(user.socket)
+                message = self.receiveMessage(clientsocket)
                 if message.messageType == Codes.MSG_TEXT:
-                    
                     self.broadcast(message)
                 if message.messageType == Codes.MSG_ROOM:
-                    print(message.content)
+                    print("room request")
                 if message.messageType == Codes.MSG_QUIT:
-                    self.unregisterUser(user)
+                    self.unregisterUser(username)
                     return
             except OSError:
                 print("%s Connection for %s likely closed"
-                    % (Codes.STR_WARN, user.username))
-                self.unregisterUser(user)
+                    % (Codes.STR_WARN, username))
+                self.unregisterUser(username)
                 return
 
-    def listenForUsername(self, user):
+    def listenForUsername(self, clientsocket):
         while self.server_active:
             try:
-                print("[INFO] Listening for username from", user.address)
-                message = self.receiveMessage(user.socket)
+                print("%s Listening for username" % Codes.STR_INFO)
+                message = self.receiveMessage(clientsocket)
+                
                 if (message.messageType != Codes.MSG_NAME):
-                    assert Exception("Unexpected message from client")
+                    print("%s recived odd message: %s" %
+                        (Codes.STR_INFO, message.messageType))
+                    
                 submittedName = message.content
                 print("%s Submitted name from %s is %s"
-                    % (Codes.STR_INFO, user.address, submittedName))
+                    % (Codes.STR_INFO, clientsocket.getpeername(), submittedName))
 
                 #check all usernames to see if the name is taken
                 nameTaken = False
@@ -126,73 +136,58 @@ class Server:
                 #name is taken, client needs to retry
                 if nameTaken:
                     self.sendMessage(
-                        Message(self.serverName,
-                            Codes.MSG_SIG,
-                            False), user.socket
-                        )
+                        Message(self.serverName, Codes.MSG_SIG, False),
+                        clientsocket)
                 #name is not taken, set client to that username
                 else:
-                    user.username = submittedName
                     self.sendMessage(
                         Message(
-                            self.serverName,
-                            Codes.MSG_SIG,
-                            True
-                        ), user.socket)
-                    return True
+                            self.serverName, Codes.MSG_SIG, True),
+                            clientsocket)
+                    return submittedName
             except OSError:
-                print("%s Connection for %s likely closed"
-                    % (Codes.STR_WARN, user.username))
-                self.unregisterUser(user.address[0])
+                print("%s Connection for unnamed %s likely closed"
+                    % Codes.STR_WAR)
                 return
             except:
+                print("Unknown error while obtaining username")
+                traceback.print_exc()
                 return False
 
-
-    def broadcast(self, message):
-        print("Broadcasting...")
-        for user in self.activeUsers:
-            try:
-                self.sendMessage(message, user.socket)
-            except:
-                print("%s Unable to broadbase to %s"
-                    % (Codes.STR_ERR ,user.username))
-                self.unregisterUser(user.address)
-
-    def registerUser(self, address, port, socket):
-        newUser = User(address, port, socket)
-        self.activeUsers.append(newUser)
+    def registerUser(self, address, port, socket, username):
+        self.activeUsers[username] = User(address, port, socket, username)
         print("%s new user added to client list" % Codes.STR_INFO)
-        return newUser
+        return username
 
     def unregisterUser(self, user):
-        for u in self.activeUsers:
-            if u is user:
-                try:
-                    self.activeUsers.remove(user)
-                    print(user.username + " unregestered")
-                    return
-                except ValueError:
-                    print("%s %s was not found in active user list"
-                        % (Codes.STR_ERR, user.username))
+        try:
+            self.activeUsers.pop(user)
+            print("%s unregestered" % user)
+            return
+        except :
+            print("%s %s was not found in active user list"
+                % (Codes.STR_ERR, user))
+
+    def broadcast(self, message):
+        for user in self.activeUsers:
+            try:
+                self.sendMessage(message, self.activeUsers[user].socket)
+            except:
+                print("%s Unable to broadbase to %s"
+                    % (Codes.STR_ERR ,user))
+                self.unregisterUser(user)
 
     def sendMessage(self, messageObject, socket):
         messageByte = pickle.dumps(messageObject)
         socket.send(messageByte)
-        print("%s Message Sent: [%s] %s" %
+        print("%s Msg Sent: [%s] %s" %
             (Codes.STR_INFO ,messageObject.messageType, messageObject.content))
         return
 
     def receiveMessage(self, usersocket):
         bytes = usersocket.recv(self.SIZE)
         message = pickle.loads(bytes)
-        print(
-            "[INFO] Message Received:",
-            "\n\tSent", message.timeSent,
-            "\n\tFrom", message.sender,
-            "\n\tType", message.messageType,
-            "\n\tContent", message.content
-        )
+        print("%s Received %s" % (Codes.STR_INFO, message))
         return message
     
     def handleCommand(self, text):
@@ -207,14 +202,20 @@ class Server:
         if (text == "list"):
             for u in self.activeUsers:
                 print(u.username,u.address)
-        if (text == "bfm"):
-            text = text[3:]
-            commandList = text.split(" ")
-            self.bruteForceMessage(commandList[1],commandList[2])
-    
-    def bruteForceMessage(self, messageType, content, user):
-        target = False
-        for u in self.activeUsers:
-            if u.username == user:
-                target = u
-        self.sendMessage(Message("Server", messageType, content), target.socket)
+
+    def addUserToRoom(self, user, room):
+        self.rooms[room].joinRoom(user)
+        self.activeUsers[user].rooms.append(room)
+        #send control message to user to say that they were added to room
+        self.sendMessage(
+            Message(
+                self.serverName,
+                Codes.MSG_ROOM,
+                (Codes.ROOM_JOIN, room)),
+            self.activeUsers[user].socket
+        )
+        print("%s is now in rooms %s" % 
+            (self.activeUsers[user], self.activeUsers[user].rooms))
+        print("%s now has users:" % (self.rooms[room]))
+        for u in self.rooms[room].users:
+            print("\t%s" % u)
