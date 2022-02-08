@@ -6,28 +6,27 @@ class Room:
     createdBy = ""
     createTime = -1
     canBeDeleted = True
-    users = []
+    currentUsers = []
 
-    def __init__(self, name, creator, canBeDeleted=canBeDeleted):
+    def __init__(self, name, creator, canBeDeleted=True):
         self.name = name
         self.createdBy = creator
         self.createTime = time.asctime( time.localtime(time.time()) )
         if (canBeDeleted is not None):
             self.canBeDeleted = canBeDeleted
+        self.currentUsers = []
 
     def setDescription(self, desc):
         self.description = desc
     
     def joinRoom(self, joiner):
-        self.users.append(joiner)
+        self.currentUsers.append(joiner)
 
     def leaveRoom(self, leaver):
         status = False
-        for user in self.users:
-            if leaver.username == user.username:
-                self.users.remove(user)
-                status = True
-                break
+        if (leaver in self.currentUsers):
+            self.currentUsers.remove(leaver)
+            status = True
         return status
 
     def getRoom(self):

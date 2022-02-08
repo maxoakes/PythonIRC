@@ -64,19 +64,22 @@ class Client:
                 message = self.receiveMessage()
                 # we have an update on rooms
                 if (message.messageType == Codes.MSG_ROOM):
-                    print("room message received")
                     #print room list from server
                     if (message.content[0] == Codes.ROOM_LIST and message.content[1]):
                         print(message.content[1])
                     #join room successful
                     if (message.content[0] == Codes.ROOM_JOIN and message.content[1]):
-                        print("Successfully joined %s" % message.content[1])
                         self.rooms.append(message.content[1])
+                        print("Successfully joined %s" % message.content[1])
+                    if (message.content[0] == Codes.ROOM_LEAVE and message.content[1]):
+                        if (message.content[1] in self.rooms):
+                            self.rooms.remove(message.content[1])
+                            print("Successfully left %s" % message.content[1])
                     #create room successful
                     if (message.content[0] == Codes.ROOM_CREATE and message.content[1]):
                         print("Successfully created %s" % message.content[1])
                     elif (not message.content[1]):
-                        print("room action failed")
+                        print("Failed to perform action about room")
 
             except socket.timeout:
                 pass

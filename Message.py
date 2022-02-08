@@ -16,11 +16,13 @@ class Message:
         self.timeSent = time.asctime( time.localtime(time.time()) )
 
     def __str__(self):
-        return "Msg: \
-            \n\tSent: %s\
-            \n\tFrom: %s\
-            \n\tType: %s\
-            \n\tContent: %s\
-            \n\tRooms: %s" \
-            % (self.timeSent, self.sender, self.messageType,
-            self.content, self.rooms)
+        # return "Msg: \
+        #     \n\tSent: %s\
+        #     \n\tFrom: %s\
+        #     \n\tType: %s\
+        #     \n\tContent: %s\
+        #     \n\tRooms: %s" \
+        #     % (self.timeSent, self.sender, self.messageType,
+        #     self.content, self.rooms)
+        return "[%s][From:%s][Type:%s][Rooms:%s][%s]" % \
+            (self.timeSent, self.sender, self.messageType, self.rooms, self.content)
