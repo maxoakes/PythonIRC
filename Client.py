@@ -105,34 +105,40 @@ class Client:
                     continue
                 else:
                     print("%s Received %s" % (Helper.STR_INFO, message))
+                #if we get here, the message that was recieved was something from the server
+                printStatement = "%s | %s: " % (message.timeSent, message.sender)
                 # we have an update on rooms
                 if (message.category == Helper.MSG_ROOM):
                     #print room list from server
                     if (message.content[0] == Helper.ROOM_LIST and message.content[1]):
-                        print(message.content[1])
+                        print(printStatement + message.content[1])
                         continue
                     #join room successful
                     if (message.content[0] == Helper.ROOM_JOIN and message.content[1]):
                         self.rooms.append(message.content[1])
-                        print("Successfully joined %s" % message.content[1])
+                        print(printStatement + "Successfully joined " + message.content[1])
                         continue
                     if (message.content[0] == Helper.ROOM_LEAVE and message.content[1]):
                         if (message.content[1] in self.rooms):
                             self.rooms.remove(message.content[1])
-                            print("Successfully left %s" % message.content[1])
+                            print(printStatement + "Successfully left " + message.content[1])
                             continue
                     #create room successful
                     if (message.content[0] == Helper.ROOM_CREATE and message.content[1]):
-                        print("Successfully created %s" % message.content[1])
+                        print(printStatement + "Successfully created " + message.content[1])
                         continue
                     elif (not message.content[1]):
-                        print("Failed to perform action about room")
+                        print(printStatement + "Failed to perform action about room.")
                         continue
             except socket.timeout:
                 pass
             except (OSError, ConnectionResetError):
                 self.gracefulClose()
                 return
+
+    ###########################################################
+    # Sending messages to the server
+    ###########################################################
 
     # send a message object to the server
     def sendMessage(self, message):
@@ -173,10 +179,15 @@ class Client:
         except ConnectionResetError:
             self.gracefulClose()
 
+    ###########################################################
+    # Helper Functions
+    ###########################################################
+
     def gracefulClose(self):
-        print("Gracefully closing")
+        
         try:
             self.sendMessage(Message(self.username,"quit","graceful"))
+            print("Gracefully closing")
         except:
             pass
         try:
