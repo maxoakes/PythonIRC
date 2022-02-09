@@ -3,14 +3,14 @@ from Helper import Helper
 
 class Message:
     sender = "unknown"
-    messageType = "control"
+    category = "control"
     content = "string" #string
     rooms = ""
     timeSent = -1 #time
 
-    def __init__(self, sender, messageType, content, rooms=rooms):
+    def __init__(self, sender, category, content, rooms=rooms):
         self.sender = sender
-        self.messageType = messageType
+        self.category = category
         self.content = content
         self.rooms = rooms
         self.timeSent = time.asctime( time.localtime(time.time()) )
@@ -22,7 +22,7 @@ class Message:
         #     \n\tType: %s\
         #     \n\tContent: %s\
         #     \n\tRooms: %s" \
-        #     % (self.timeSent, self.sender, self.messageType,
+        #     % (self.timeSent, self.sender, self.category,
         #     self.content, self.rooms)
         return "[%s][From:%s][Type:%s][Rooms:%s][%s]" % \
-            (self.timeSent, self.sender, self.messageType, self.rooms, self.content)
+            (self.timeSent, self.sender, self.category, self.rooms, self.content)

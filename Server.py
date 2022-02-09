@@ -89,7 +89,7 @@ class Server:
             try:
                 message = self.receiveMessage(clientsocket)
                 # if it is a simple text message, broadcast it to their rooms
-                if message.messageType == Helper.MSG_TEXT:
+                if message.category == Helper.MSG_TEXT:
                     self.broadcast(message)
                     continue
                 # if it is not a text message, it is a command
@@ -107,9 +107,9 @@ class Server:
                 print("%s Listening for username" % Helper.STR_INFO)
                 message = self.receiveMessage(clientsocket)
                 
-                if (message.messageType != Helper.MSG_NAME):
+                if (message.category != Helper.MSG_NAME):
                     print("%s recived odd message: %s" %
-                        (Helper.STR_INFO, message.messageType))
+                        (Helper.STR_INFO, message.category))
                     
                 submittedName = message.content
                 print("%s Submitted name from %s is %s"
@@ -189,7 +189,7 @@ class Server:
         messageByte = pickle.dumps(messageObject)
         socket.send(messageByte)
         print("%s Msg Sent: [%s] %s" %
-            (Helper.STR_INFO ,messageObject.messageType, messageObject.content))
+            (Helper.STR_INFO ,messageObject.category, messageObject.content))
         return
 
     def receiveMessage(self, usersocket):
@@ -260,7 +260,7 @@ class Server:
     # given a command from a user, handle it appropriately
     def handleUserCommand(self, message, clientsocket):
         # if the user entered "/room <something>"
-        if message.messageType == Helper.MSG_ROOM:
+        if message.category == Helper.MSG_ROOM:
             # /room list -> return list of rooms on the server as a string
             if message.content == Helper.ROOM_LIST:
                 roomList = list(self.rooms.keys())
@@ -319,11 +319,11 @@ class Server:
                         self.sendCommandFail(Helper.MSG_ROOM, Helper.ROOM_CREATE, clientsocket)
         
         # if the user says they are leaving
-        if message.messageType == Helper.MSG_QUIT:
+        if message.category == Helper.MSG_QUIT:
             self.unregisterUser(message.sender)
             return
 
     #helper method to reduce line length
-    def sendCommandFail(self, messageType, subtype, clientsocket):
-        self.sendMessage(Message(self.serverName, messageType, (subtype, Helper.ACT_FAIL)),
+    def sendCommandFail(self, category, subtype, clientsocket):
+        self.sendMessage(Message(self.serverName, category, (subtype, Helper.ACT_FAIL)),
             clientsocket)
