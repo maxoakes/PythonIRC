@@ -16,6 +16,14 @@ class User:
         self.connectTime = time.asctime( time.localtime(time.time()) )
         self.id = round(time.time() * 1000)
         self.username = username
+        self.rooms = []
+
+    def leaveRoom(self, room):
+        status = False
+        if (room in self.rooms):
+            self.rooms.remove(room)
+            status = True
+        return status
 
     def __str__(self):
         return self.username

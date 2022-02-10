@@ -47,7 +47,7 @@ class Client:
                 if (len(self.rooms) == 0):
                     print("You are not in any rooms! Use '/room join <room name>' to join one.")
                     continue
-                self.sendMessage(Message(self.username, Helper.MSG_TEXT, text, rooms=self.rooms))
+                self.sendMessage(Message(self.username, Helper.MSG_TEXT, Helper.NO_SUBTYPE, text, rooms=self.rooms))
             except (ConnectionResetError, KeyboardInterrupt):
                 break
         return self.gracefulClose()
@@ -60,6 +60,7 @@ class Client:
     def receiveMessage(self):
         bytes = self.mySocket.recv(Helper.PACKET_SIZE)
         message = pickle.loads(bytes)
+        # print("%s Received %s" % (Helper.STR_INFO, message))
         return message
 
     # input a username and submit it to the server. Then await Lobby room entry
@@ -67,12 +68,12 @@ class Client:
         while self.mySocket:
             submitted = input("Choose an alphanumeric username: ")
             try:
-                self.sendMessage(Message(self.username, Helper.MSG_NAME, submitted))
+                self.sendMessage(Message(self.username, Helper.MSG_NAME, Helper.NAME_REQUEST, submitted))
                 message = self.receiveMessage()
-                status = message.content
-                if (status == Helper.ACT_INVALID): #username not valid
+                status = message.subtype
+                if (status == Helper.NAME_INVALID): #username not valid
                     print("Username is not valid. Must contain 1-16 alphanumeric characters.")
-                if (status == Helper.ACT_SUCCESS): #username accepted
+                elif (status == Helper.NAME_VALID): #username accepted
                     print ("Username accepted.")
                     self.username = submitted
                     break
@@ -82,9 +83,9 @@ class Client:
                 self.gracefulClose()
                 return
         message = self.receiveMessage()
-        if (message.category == Helper.MSG_ROOM and message.content[0] == Helper.ROOM_JOIN):
-            print("Joined %s" % message.content[1])
-            self.rooms.append(message.content[1])
+        if (message.category == Helper.MSG_ROOM and message.subtype == Helper.ROOM_JOIN):
+            print("Joined %s" % message.content)
+            self.rooms.append(message.content)
             return True
         return True
             
@@ -93,6 +94,7 @@ class Client:
         while self.mySocket:
             try:
                 message = self.receiveMessage()
+                serverResponse = "%s | %s: " % (message.timeSent, message.sender)
                 # we have a plain ol' text chat message from someone
                 if (message.category == Helper.MSG_TEXT):
                     timeSent = message.timeSent
@@ -103,33 +105,40 @@ class Client:
                     textString = message.content
                     print("%s %s %s: %s" % (timeSent, rooms, sender, textString))
                     continue
+                elif (message.category == Helper.MSG_WHISPER):
+                    if (message.subtype == Helper.SIG_FAIL):
+                        print(serverResponse + "Whisper failed to send to " + message.content)
+                    else:
+                        timeSent = message.timeSent
+                        sender = message.sender
+                        textString = message.content
+                        print("[Whisper] %s %s: %s" % (timeSent, sender, textString))
                 else:
-                    print("%s Received %s" % (Helper.STR_INFO, message))
-                #if we get here, the message that was recieved was something from the server
-                printStatement = "%s | %s: " % (message.timeSent, message.sender)
-                # we have an update on rooms
-                if (message.category == Helper.MSG_ROOM):
-                    #print room list from server
-                    if (message.content[0] == Helper.ROOM_LIST and message.content[1]):
-                        print(printStatement + message.content[1])
-                        continue
-                    #join room successful
-                    if (message.content[0] == Helper.ROOM_JOIN and message.content[1]):
-                        self.rooms.append(message.content[1])
-                        print(printStatement + "Successfully joined " + message.content[1])
-                        continue
-                    if (message.content[0] == Helper.ROOM_LEAVE and message.content[1]):
-                        if (message.content[1] in self.rooms):
-                            self.rooms.remove(message.content[1])
-                            print(printStatement + "Successfully left " + message.content[1])
+                    # we have an update on rooms
+                    if (message.category == Helper.MSG_INFO):
+                        print(serverResponse + message.content)
+                    if (message.category == Helper.MSG_ROOM):
+                        #join room successful
+                        if (message.subtype == Helper.ROOM_JOIN and message.content != Helper.SIG_FAIL):
+                            self.rooms.append(message.content)
+                            print(serverResponse + "Successfully joined " + message.content)
                             continue
-                    #create room successful
-                    if (message.content[0] == Helper.ROOM_CREATE and message.content[1]):
-                        print(printStatement + "Successfully created " + message.content[1])
-                        continue
-                    elif (not message.content[1]):
-                        print(printStatement + "Failed to perform action about room.")
-                        continue
+                        # leave room successful
+                        if (message.subtype == Helper.ROOM_LEAVE and message.content != Helper.SIG_FAIL):
+                            if (message.content in self.rooms):
+                                self.rooms.remove(message.content)
+                                print(serverResponse + "Successfully left " + message.content)
+                                continue
+                        #create room successful
+                        if (message.subtype == Helper.ROOM_CREATE and message.content != Helper.SIG_FAIL):
+                            if (message.content == Helper.NAME_INVALID):
+                                print(serverResponse + "Room name is not valid. Must be alphanumeric between 1-16 characters")
+                                continue
+                            print(serverResponse + "Successfully created " + message.content)
+                            continue
+                        elif (message.content == Helper.SIG_FAIL):
+                            print(serverResponse + "Failed to perform %s action on room." % message.subtype)
+                            continue
             except socket.timeout:
                 pass
             except (OSError, ConnectionResetError):
@@ -144,22 +153,34 @@ class Client:
     def sendMessage(self, message):
         messageByte = pickle.dumps(message)
         self.mySocket.send(messageByte)
-        print("%s Message Sent: [%s] %s" % (Helper.STR_INFO, message.category, message.content))
+        # print("%s Message Sent: [%s:%s] %s" % (Helper.STR_INFO, message.category, message.subtype, message.content))
         return
 
     def handleCommand(self, command):
         components = command.split(" ")
         try:
+            if (components[0] == "whisper" or components[0] == "w"):
+                if (len(components) == 1):
+                    print("Refer to the /help command.")
+                    return
+                target = components[1]
+                targetLength = len(target)
+                textbodyStart = command.find(target) + targetLength
+                textbody = command[textbodyStart+1:]
+                self.sendMessage(Message(self.username, Helper.MSG_WHISPER, target, textbody))
+
             if (command == "help"):
                 # /help
                 print("Available commands: \
-                    /quit (Close the client) \
-                    /room create <room name> (Create a room) \
-                    /room join <room name> (Join a room) \
-                    /room leave <room name> (Leave a room) \
-                    /room delete <room name> (Request a room be deleted. Must have no clients in it) \
-                    /room current (List the rooms that you are currently in) \
-                    /room list (List all rooms available on the server)")
+                    \n  /quit (Close the client) \
+                    \n  /room create <room name> (Create a room) \
+                    \n  /room join <room name> (Join a room) \
+                    \n  /room leave <room name> (Leave a room) \
+                    \n  /room delete <room name> (Request a room be deleted. Must have no clients in it) \
+                    \n  /room current (List the rooms that you are currently in) \
+                    \n  /info rooms (List all rooms available on the server) \
+                    \n  /info users [room name] (List all users on the server, or optionally, a specific room) \
+                    \n  /whisper OR /w <username> <message>")
             if (components[0] == "room"):
                 if (len(components) == 1):
                     print("Refer to the /help command.")
@@ -167,15 +188,28 @@ class Client:
                 if (len(components) == 2):
                     if components[1] == "current":
                         print(self.rooms)
-                        return
-                    if components[1] == "list":
-                        self.sendMessage(Message(self.username,Helper.MSG_ROOM,Helper.ROOM_LIST))
-                        print("awaiting room list")
-                        return
                 if (len(components) == 3):
                     action = components[1]
                     name = components[2]
-                    self.sendMessage(Message(self.username,Helper.MSG_ROOM,(action, name)))
+                    if (action == "create"):
+                        self.sendMessage(Message(self.username, Helper.MSG_ROOM, Helper.ROOM_CREATE, name))
+                    if (action == "join"):
+                        self.sendMessage(Message(self.username, Helper.MSG_ROOM, Helper.ROOM_JOIN, name))
+                    if (action == "leave"):
+                        self.sendMessage(Message(self.username, Helper.MSG_ROOM, Helper.ROOM_LEAVE, name))
+            if (components[0] == "info"):
+                if (len(components) == 1):
+                    print("Refer to the /help command.")
+                    return
+                if components[1] == "users":
+                    if (len(components) == 2):
+                        self.sendMessage(Message(self.username, Helper.MSG_INFO, Helper.INFO_USERS, ""))
+                        return
+                    elif (len(components) == 3):
+                        self.sendMessage(Message(self.username, Helper.MSG_INFO, Helper.INFO_USERS, components[2]))
+                        return
+                if (components[1] == "rooms"):
+                    self.sendMessage(Message(self.username, Helper.MSG_INFO, Helper.INFO_ROOMS, ""))
         except ConnectionResetError:
             self.gracefulClose()
 
@@ -186,7 +220,7 @@ class Client:
     def gracefulClose(self):
         
         try:
-            self.sendMessage(Message(self.username,"quit","graceful"))
+            self.sendMessage(Message(self.username, Helper.MSG_QUIT, Helper.QUIT_GRACEFUL, "thank you"))
             print("Gracefully closing")
         except:
             pass

@@ -1,28 +1,38 @@
-import time
+from datetime import datetime
 from Helper import Helper
 
 class Message:
-    sender = "unknown"
-    category = "control"
-    content = "string" #string
-    rooms = ""
-    timeSent = -1 #time
+    sender = Helper.NOT_INIT
+    category = Helper.NOT_INIT
+    subtype = Helper.NOT_INIT
+    content = Helper.NOT_INIT
+    rooms = Helper.NOT_INIT
+    timeSent = Helper.NOT_INIT
 
-    def __init__(self, sender, category, content, rooms=rooms):
+    def __init__(self, sender, category, subtype, content, rooms=rooms):
         self.sender = sender
         self.category = category
         self.content = content
+        self.subtype = subtype
         self.rooms = rooms
-        self.timeSent = time.asctime( time.localtime(time.time()) )
+        self.timeSent = datetime.now().strftime("%H:%M:%S")
 
     def __str__(self):
-        # return "Msg: \
-        #     \n\tSent: %s\
-        #     \n\tFrom: %s\
-        #     \n\tType: %s\
-        #     \n\tContent: %s\
-        #     \n\tRooms: %s" \
-        #     % (self.timeSent, self.sender, self.category,
-        #     self.content, self.rooms)
-        return "[%s][From:%s][Type:%s][Rooms:%s][%s]" % \
-            (self.timeSent, self.sender, self.category, self.rooms, self.content)
+        rooms = ",".join(self.rooms)
+        return "[T=%s][S=%s][T=%s:%s][R=%s][C=%s]" % \
+            (self.timeSent, self.sender, self.category, self.subtype, rooms, self.content)
+
+    # text
+    # username
+    # room
+    #   join
+    #   leave
+    #   create
+    # quit
+    # signal
+    #   success
+    #   fail
+    #   invalid
+    # info
+    #   users
+    #   rooms
