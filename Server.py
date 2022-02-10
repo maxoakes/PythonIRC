@@ -85,7 +85,7 @@ class Server:
             print("%s %s was not found in active user list" % (Helper.STR_ERR, user))
         try:
             for room in self.rooms.keys():
-                if user in self.rooms[room]:
+                if user in self.rooms[room].currentUsers:
                     self.rooms[room].leaveRoom(user)
                     print("%s %s unregistered and removed from %s" % (Helper.STR_INFO, user, room))
         except:
