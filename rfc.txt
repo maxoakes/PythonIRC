@@ -34,7 +34,7 @@ Table of Contents
 4.2. Message Types
 4.3. Usage
 
-5. Client Messages
+5. The Client
 5.1. Login
 5.2. Listening
 5.2.1. Text Content
@@ -46,7 +46,7 @@ Table of Contents
 5.4.2 Room Info
 5.4.3 Leaving and Deleting Rooms
 5.4.3 Private Messages
-6. Server Messages
+6. The Server
 6.1. Listening
 6.2. Broadcasting
 6.2.1 Private Messages

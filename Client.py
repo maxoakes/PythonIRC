@@ -7,10 +7,15 @@ from Helper import Helper
 class Client:
     username = Helper.NOT_INIT
     mySocket = False
-    rooms = []
+    listeningRooms = []
+    shoutRooms = []
+    targetRoom = ""
 
     def __init__(self, destination, port, username):
         self.username = username
+        self.listeningRooms = []
+        self.shoutRooms = []
+        self.targetRoom = ""
 
         # create an INET, STREAMing socket
         self.mySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -44,10 +49,10 @@ class Client:
                     self.handleCommand(text[1:])
                     continue
                 #it is a chat message
-                if (len(self.rooms) == 0):
-                    print("You are not in any rooms! Use '/room join <room name>' to join one.")
+                if (self.targetRoom == ""):
+                    print("You are not targeting any rooms! Use '/room join <room name>' to join one.")
                     continue
-                self.sendMessage(Message(self.username, Helper.MSG_TEXT, Helper.NO_SUBTYPE, text, rooms=self.rooms))
+                self.sendMessage(Message(self.username, Helper.MSG_TEXT, Helper.NO_SUBTYPE, text, rooms=[self.targetRoom,]))
             except (ConnectionResetError, KeyboardInterrupt):
                 break
         return self.gracefulClose()
@@ -85,7 +90,8 @@ class Client:
         message = self.receiveMessage()
         if (message.category == Helper.MSG_ROOM and message.subtype == Helper.ROOM_JOIN):
             print("Joined %s" % message.content)
-            self.rooms.append(message.content)
+            self.listeningRooms.append(message.content)
+            self.targetRoom = message.content
             return True
         return True
             
@@ -120,13 +126,15 @@ class Client:
                     if (message.category == Helper.MSG_ROOM):
                         #join room successful
                         if (message.subtype == Helper.ROOM_JOIN and message.content != Helper.SIG_FAIL):
-                            self.rooms.append(message.content)
+                            self.listeningRooms.append(message.content)
                             print(serverResponse + "Successfully joined " + message.content)
                             continue
                         # leave room successful
                         if (message.subtype == Helper.ROOM_LEAVE and message.content != Helper.SIG_FAIL):
-                            if (message.content in self.rooms):
-                                self.rooms.remove(message.content)
+                            if (message.content in self.listeningRooms):
+                                self.listeningRooms.remove(message.content)
+                                if (message.content in self.shoutRooms):
+                                    self.shoutRooms.remove(message.content)
                                 print(serverResponse + "Successfully left " + message.content)
                                 continue
                         #create room successful
@@ -168,7 +176,6 @@ class Client:
                 textbodyStart = command.find(target) + targetLength
                 textbody = command[textbodyStart+1:]
                 self.sendMessage(Message(self.username, Helper.MSG_WHISPER, target, textbody))
-
             if (command == "help"):
                 # /help
                 print("Available commands: \
@@ -177,7 +184,9 @@ class Client:
                     \n  /room join <room name> (Join a room) \
                     \n  /room leave <room name> (Leave a room) \
                     \n  /room delete <room name> (Request a room be deleted. Must have no clients in it) \
-                    \n  /room current (List the rooms that you are currently in) \
+                    \n  /room listening (List the rooms that you are currently in) \
+                    \n  /shoutset <room 1> <room 2> ... <room n> (Declare the rooms to shout into) \
+                    \n  /shout <message> (Send a message to all of your shout rooms) \
                     \n  /info rooms (List all rooms available on the server) \
                     \n  /info users [room name] (List all users on the server, or optionally, a specific room) \
                     \n  /whisper OR /w <username> <message>")
@@ -186,8 +195,10 @@ class Client:
                     print("Refer to the /help command.")
                     return
                 if (len(components) == 2):
-                    if components[1] == "current":
-                        print(self.rooms)
+                    if components[1] == "listening":
+                        print(self.listeningRooms)
+                    if components[1] == "shouting":
+                        print(self.shoutRooms)
                 if (len(components) == 3):
                     action = components[1]
                     name = components[2]
@@ -210,6 +221,28 @@ class Client:
                         return
                 if (components[1] == "rooms"):
                     self.sendMessage(Message(self.username, Helper.MSG_INFO, Helper.INFO_ROOMS, ""))
+            if (components[0] == "shoutset"):
+                if (len(components) == 1):
+                    print("Refer to the /help command.")
+                    return
+                for room in components[1:]:
+                    if room in self.listeningRooms:
+                        self.shoutRooms.append(room)
+                print("Shout rooms set to: %s" % ", ".join(self.shoutRooms))
+            if (components[0] == "shout"):
+                if (len(components) == 1):
+                    print("Refer to the /help command.")
+                    return
+                textbody = command[len(components[0]):]
+                self.sendMessage(Message(self.username, Helper.MSG_TEXT, Helper.NO_SUBTYPE, textbody, rooms=self.shoutRooms))
+            if (components[0] == "talk"):
+                if (len(components) == 1):
+                    print("Refer to the /help command.")
+                    return
+                if components[1] in self.listeningRooms:
+                    self.targetRoom = components[1]
+                    print("Talking room set to %s" % self.targetRoom)
+                
         except ConnectionResetError:
             self.gracefulClose()
 

@@ -208,7 +208,13 @@ class Server:
                 self.unregisterUser(user)
 
     def whisper(self, message):
-        targetSocket = self.activeUsers[message.subtype].socket
+        if message.subtype in self.activeUsers.keys():
+            targetSocket = self.activeUsers[message.subtype].socket
+        else:
+            print("%s User tried to whisper person that does not exist" % Helper.STR_INFO)
+            sourceSocket = self.activeUsers[message.sender].socket
+            self.sendMessage(Message(self.serverName, Helper.MSG_WHISPER, Helper.SIG_FAIL, message.subtype), sourceSocket)
+            return
         try:
             self.sendMessage(Message(message.sender, Helper.MSG_WHISPER, Helper.SIG_SUCCESS, message.content), targetSocket)
         except:
