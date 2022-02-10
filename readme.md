@@ -26,7 +26,7 @@ Client can send messages to a room
 Client can join multiple (selected) rooms
     Done
 Client can send distinct messages to multiple (selected) rooms
-    ???
+    Done
 Client can disconnect from a server
     Done
 Server can disconnect from clients

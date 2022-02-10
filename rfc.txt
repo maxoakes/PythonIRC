@@ -28,53 +28,57 @@ Table of Contents
 1. Introduction
 2. Conventions used in this document
 3. Basic Information
-
 4. Message Infrastructure
 4.1. Message Object
 4.2. Message Types
-4.3. Usage
-
+4.3. OP Codes
+4.4. Usage
 5. The Client
 5.1. Login
 5.2. Listening
-5.2.1. Text Content
-5.2.2. Server Info
-5.3. Sending
-5.3.1 Text Content
-5.4 Commands
-5.4.1 Creating and Joining Rooms
-5.4.2 Room Info
-5.4.3 Leaving and Deleting Rooms
+5.3. Chatting
+5.4. Commands
+5.4.1 Rooms
+5.4.2 Room Selecting
 5.4.3 Private Messages
+5.4.4 Server Information
+5.4.5 Quitting
 6. The Server
-6.1. Listening
-6.2. Broadcasting
-6.2.1 Private Messages
-6.2.2. Field definitions
-6.3. Room Management
-6.3.1 Room Objects
-7. Error Handling
-8. Conclusion & Future Work
-9. Security Considerations
-10. IANA Considerations
-10.1. Normative References
-11. Acknowledgments
+6.1. Initialization
+6.2. Listening
+6.2.1. Listening for New Clients
+6.2.2. Listening for Messages from Existing Clients
+6.3. Handling Client Messages
+6.3.1. Text Chat
+6.3.2. Whispers
+6.3.3. Commands
+6.4. Room and User Management
+6.4.1. Client Quitting
+6.5. Server-side commands
+7. Rooms
+7.1 Room Structure
+8. Error Handling
+9. Conclusion & Future Work
+10. Security Considerations
+11. IANA Considerations
+11.1. Normative References
+12. Acknowledgments
 
 
 
-9. Security Considerations 
+10. Security Considerations 
  
 Messages sent using this system have no protection against inspection, tampering or outright forgery. The server sees all messages that are sent through the use of this service. 'Private' messaging may be easily intercepted by a 3rd party that is able to capture network traffic. Users wishing to use this system for secure communication should use/implement their own user-to-user encryption protocol.  
  
-10. IANA Considerations 
+11. IANA Considerations 
  
 None 
  
-10.1. Normative References 
+11.1. Normative References 
 
 <References used>
  
-13. Acknowledgments 
+12. Acknowledgments 
  
 <Acknowledgments>
 
