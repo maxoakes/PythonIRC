@@ -15,8 +15,6 @@ def main():
     except IndexError:
         print("default port " + str(port) + " will be used")
     print("Entered address and port:", destination, port)
-
-    print("spawning client")
     myClient = Client(destination, port, "New User")
 
 if __name__ == '__main__':

@@ -2,15 +2,14 @@ import traceback
 import socket
 import threading
 import pickle
-import datetime
-from urllib.parse import uses_relative
+import sys
 from User import User
 from Message import Message
 from Room import Room
 from Helper import Helper
 
 class Server:    
-    server_active = True
+    serverAlive = True
     hostname = ""
     port = 7779
     serversocket = False
@@ -41,7 +40,7 @@ class Server:
         connectionlistening.start()
         
         # terminal loop. Listens to text input via server terminal
-        while self.server_active:
+        while self.serverAlive:
             message = input("")
             self.handleTerminalCommands(message)
 
@@ -51,7 +50,7 @@ class Server:
         # create the default room
         self.createRoom(Helper.ROOM_DEFAULT_NAME,self.serverName,"The default room",False)
 
-        while self.server_active:
+        while self.serverAlive:
             # accept connections from outside
             try:
                 (clientsocket, address) = self.serversocket.accept()
@@ -69,6 +68,8 @@ class Server:
             except OSError:
                 print("%s Client-listening thread function closing." % Helper.STR_WARN)
                 return
+            except:
+                print("different thread error")
         
     ###########################################################
     # User and room management
@@ -97,7 +98,7 @@ class Server:
         self.activeUsers[user].rooms.append(room)
         # send control message to user to say that they were added to room
         self.sendMessage(
-            Message(self.serverName, Helper.MSG_ROOM, Helper.ROOM_JOIN,room),
+            Message(self.serverName, Helper.MSG_ROOM, Helper.ROOM_JOIN, Helper.SIG_SUCCESS, room),
             self.activeUsers[user].socket
         )
         self.handleTerminalCommands("rooms")
@@ -107,7 +108,7 @@ class Server:
         self.activeUsers[user].leaveRoom(room)
         # send control message to user to say where removed from room
         self.sendMessage(
-            Message(self.serverName, Helper.MSG_ROOM, Helper.ROOM_LEAVE, room),
+            Message(self.serverName, Helper.MSG_ROOM, Helper.ROOM_LEAVE, Helper.SIG_SUCCESS, room),
             self.activeUsers[user].socket
         )
         self.handleTerminalCommands("rooms")
@@ -123,7 +124,7 @@ class Server:
 
     #await the username submitted by the client
     def listenForUsername(self, clientsocket):
-        while self.server_active:
+        while self.serverAlive:
             try:
                 message = self.receiveMessage(clientsocket)
                 
@@ -135,7 +136,10 @@ class Server:
 
                 nameValid = self.isNameValid(submittedName)
                 if not nameValid:
-                    self.sendMessage(Message(self.serverName, Helper.MSG_NAME, Helper.NAME_INVALID, submittedName),clientsocket)
+                    self.sendMessage(
+                        Message(self.serverName, Helper.MSG_NAME, Helper.NO_SUBTYPE, Helper.SIG_INVALID, submittedName),
+                        clientsocket
+                    )
                     continue
 
                 nameTaken = False
@@ -144,10 +148,16 @@ class Server:
                         nameTaken = True
                         break
                 if nameTaken:
-                    self.sendMessage(Message(self.serverName, Helper.MSG_NAME, Helper.NAME_USED, submittedName),clientsocket)
+                    self.sendMessage(
+                        Message(self.serverName, Helper.MSG_NAME, Helper.NO_SUBTYPE, Helper.SIG_USED, submittedName),
+                        clientsocket
+                    )
                     continue
                 else:
-                    self.sendMessage(Message(self.serverName, Helper.MSG_NAME, Helper.NAME_VALID, submittedName),clientsocket)
+                    self.sendMessage(
+                        Message(self.serverName, Helper.MSG_NAME, Helper.NO_SUBTYPE, Helper.SIG_SUCCESS, submittedName),
+                        clientsocket
+                    )
                     return submittedName
             except OSError:
                 print("%s Connection for unnamed %s likely closed" % (Helper.STR_WARN, clientsocket.getpeername()))
@@ -167,7 +177,7 @@ class Server:
         
         # at this point, the user is registered, and we are now
         # listening for user-generated messages
-        while self.server_active:
+        while self.serverAlive:
             try:
                 message = self.receiveMessage(clientsocket)
                 # if it is a simple text message, broadcast it to their rooms
@@ -177,15 +187,14 @@ class Server:
                 # if it is not a text message, it is a command
                 self.handleUserCommand(message, clientsocket)
             except OSError:
-                print("%s Connection for %s likely closed"
-                    % (Helper.STR_WARN, username))
+                print("%s Connection for %s likely closed" % (Helper.STR_WARN, username))
                 self.unregisterUser(username)
                 return
 
     def receiveMessage(self, usersocket):
         bytes = usersocket.recv(Helper.PACKET_SIZE)
         message = pickle.loads(bytes)
-        # print("%s Received %s" % (Helper.STR_INFO, message))
+        print("%s Received %s" % (Helper.STR_INFO, message))
         return message
 
     ###########################################################
@@ -202,7 +211,9 @@ class Server:
         # print("going to users %s" % toUsers)
         for user in toUsers:
             try:
-                self.sendMessage(message, self.activeUsers[user].socket)
+                msg = message
+                msg.status = Helper.SIG_SUCCESS
+                self.sendMessage(msg, self.activeUsers[user].socket)
             except:
                 print("%s Unable to broadcast to %s" % (Helper.STR_ERR, user))
                 self.unregisterUser(user)
@@ -213,20 +224,29 @@ class Server:
         else:
             print("%s User tried to whisper person that does not exist" % Helper.STR_INFO)
             sourceSocket = self.activeUsers[message.sender].socket
-            self.sendMessage(Message(self.serverName, Helper.MSG_WHISPER, Helper.SIG_FAIL, message.subtype), sourceSocket)
+            self.sendMessage(
+                Message(self.serverName, Helper.MSG_WHISPER, Helper.NO_SUBTYPE, Helper.SIG_FAIL, message.subtype),
+                sourceSocket
+            )
             return
         try:
-            self.sendMessage(Message(message.sender, Helper.MSG_WHISPER, Helper.SIG_SUCCESS, message.content), targetSocket)
+            self.sendMessage(
+                Message(message.sender, Helper.MSG_WHISPER, Helper.NO_SUBTYPE, Helper.SIG_SUCCESS, message.content),
+                targetSocket
+            )
         except:
             print("Failed to service a whisper")
             sourceSocket = self.activeUsers[message.sender].socket
-            self.sendMessage(Message(self.serverName, Helper.MSG_WHISPER, Helper.SIG_FAIL, message.subtype), sourceSocket)
+            self.sendMessage(
+                Message(self.serverName, Helper.MSG_WHISPER, Helper.NO_SUBTYPE, Helper.SIG_FAIL, message.subtype),
+                sourceSocket
+            )
             self.unregisterUser(message.subtype)                
 
     def sendMessage(self, message, socket):
         messageByte = pickle.dumps(message)
         socket.send(messageByte)
-        # print("%s Sent %s" % (Helper.STR_INFO, message))
+        print("%s Sent %s" % (Helper.STR_INFO, message))
         return
     
     ###########################################################
@@ -237,13 +257,7 @@ class Server:
         if (text == "help"):
             print("Available commands: 'quit', 'rooms', 'users'")
         if (text == "quit"):
-            self.server_active = False
-            self.serversocket.close()
-            for t in threading.enumerate():
-                if (threading.current_thread() != t):
-                    t.join()
-            print("%s All threads joined. Server program closing gracefully." % Helper.STR_INFO)
-            exit(0)
+            self.fullShutdown()
         if (text == "rooms"):
             print ("%s Current rooms and occupants:" % Helper.STR_INFO)
             for room in self.rooms.keys():
@@ -269,7 +283,7 @@ class Server:
                 for room in roomList:
                     roomListString = roomListString + ("%s " % room)
                 self.sendMessage(
-                    Message(self.serverName, Helper.MSG_INFO, Helper.INFO_ROOMS, roomListString),
+                    Message(self.serverName, Helper.MSG_INFO, Helper.INFO_ROOMS, Helper.SIG_SUCCESS, roomListString),
                     clientsocket
                 )
             # /info users -> return list of users on the server as a string
@@ -279,7 +293,7 @@ class Server:
                     userList = self.rooms[targetRoom].currentUsers
                     userListString = "Currently %s users in room %s: %s" % (len(userList), message.content, ", ".join(userList))
                     self.sendMessage(
-                        Message(self.serverName, Helper.MSG_INFO, Helper.INFO_USERS, userListString),
+                        Message(self.serverName, Helper.MSG_INFO, Helper.INFO_USERS, Helper.SIG_SUCCESS, userListString),
                         clientsocket
                     )
                     return
@@ -288,7 +302,7 @@ class Server:
                 for user in userList:
                     userListString = userListString + ("%s " % user)
                 self.sendMessage(
-                    Message(self.serverName, Helper.MSG_INFO, Helper.INFO_USERS, userListString),
+                    Message(self.serverName, Helper.MSG_INFO, Helper.INFO_USERS, Helper.SIG_SUCCESS, userListString),
                     clientsocket
                 )
                 return
@@ -302,40 +316,41 @@ class Server:
                         self.addUserToRoom(message.sender, message.content)
                     else:
                         print("%s User tried to join room they were already in" % Helper.STR_INFO)
-                        self.sendCommandFail(Helper.MSG_ROOM, Helper.ROOM_JOIN, clientsocket)
+                        self.sendCommandFail(Helper.MSG_ROOM, Helper.ROOM_JOIN, message.content, clientsocket)
                 else:
                     print("%s User tried to join room that does not exist" % Helper.STR_INFO)
-                    self.sendCommandFail(Helper.MSG_ROOM, Helper.ROOM_JOIN, clientsocket)
+                    self.sendCommandFail(Helper.MSG_ROOM, Helper.ROOM_JOIN, message.content, clientsocket)
             # if room leave is requested
             if message.subtype == Helper.ROOM_LEAVE:
                 if message.content in self.rooms.keys():
                     if message.sender in self.rooms[message.content].currentUsers:
                         self.removeUserFromRoom(message.sender, message.content)
                         self.sendMessage(
-                            Message(self.serverName, Helper.MSG_ROOM, Helper.ROOM_LEAVE, message.content),
+                            Message(self.serverName, Helper.MSG_ROOM, Helper.ROOM_LEAVE, Helper.SIG_SUCCESS, message.content),
                             clientsocket
                         )
                     else:
                         print("%s User tried to be removed from room they were not in" % Helper.STR_ERR)
-                        self.sendCommandFail(Helper.MSG_ROOM, Helper.ROOM_LEAVE, clientsocket)
+                        self.sendCommandFail(Helper.MSG_ROOM, Helper.ROOM_LEAVE, message.content, clientsocket)
                 else:
                     print("%s User tried to be removed from room that does not exist" % Helper.STR_ERR)
-                    self.sendCommandFail(Helper.MSG_ROOM, Helper.ROOM_LEAVE, clientsocket)
+                    self.sendCommandFail(Helper.MSG_ROOM, Helper.ROOM_LEAVE, message.content, clientsocket)
             # if room creation is requested
             if message.subtype == Helper.ROOM_CREATE:
                 isValid = self.isNameValid(message.content)
                 if (not isValid):
                     print("%s User tried to create room that had an invalid name" % Helper.STR_ERR)
-                    self.sendMessage(Message(self.serverName, Helper.INFO_ROOMS, Helper.ROOM_CREATE, Helper.NAME_INVALID),
+                    self.sendMessage(
+                        Message(self.serverName, Helper.INFO_ROOMS, Helper.ROOM_CREATE, Helper.SIG_INVALID, message.content),
                         clientsocket)
                 if message.content not in self.rooms.keys():
                     self.createRoom(message.content, message.sender, "A new room")
                     self.sendMessage(
-                        Message(self.serverName, Helper.MSG_ROOM, Helper.ROOM_CREATE, message.content),
+                        Message(self.serverName, Helper.MSG_ROOM, Helper.ROOM_CREATE, Helper.SIG_SUCCESS, message.content),
                         clientsocket)
                 else:
                     print("%s User tried to create room that already exists" % Helper.STR_ERR)
-                    self.sendCommandFail(Helper.MSG_ROOM, Helper.ROOM_CREATE, clientsocket)
+                    self.sendCommandFail(Helper.MSG_ROOM, Helper.ROOM_CREATE, message.content, clientsocket)
         # if the user says they are leaving
         if message.category == Helper.MSG_QUIT:
             self.unregisterUser(message.sender)
@@ -346,8 +361,8 @@ class Server:
     ###########################################################
 
     #helper method to reduce line length
-    def sendCommandFail(self, category, subtype, clientsocket):
-        self.sendMessage(Message(self.serverName, category, subtype, Helper.SIG_FAIL),
+    def sendCommandFail(self, category, subtype, content, clientsocket):
+        self.sendMessage(Message(self.serverName, category, subtype, Helper.SIG_FAIL, content),
             clientsocket)
 
     def isNameValid(self, submittedName):
@@ -358,3 +373,22 @@ class Server:
         if (not submittedName.isalnum()):
             return False
         return True
+
+    def fullShutdown(self):
+        self.serverAlive = False
+        usersToRemove = []
+        for user in self.activeUsers.keys():
+            usersToRemove.append(user)
+        for user in usersToRemove:
+            try:
+                print("%s closing socket for %s" % (Helper.STR_INFO, user))
+                self.activeUsers[user].socket.shutdown(socket.SHUT_RDWR)
+                self.activeUsers[user].socket.close()
+                print("%s ^ closed" % Helper.STR_INFO)
+            except:
+                print("f")
+        self.serversocket.close()
+
+        print("%s All threads joined. Server program closing gracefully." % Helper.STR_INFO)
+        return
+
