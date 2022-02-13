@@ -1,6 +1,6 @@
 # Python-based IRC
 
-Complete with rooms and private messages.
+Complete with channels and private messages.
 
 See rfc.txt for details.
 
@@ -9,23 +9,23 @@ RFC Document
     In progress
 Client can connect to a server
     Done
-Client can create a room
+Client can create a channel
     Done
-Client can list all rooms
+Client can list all channels
     Done
-Client can join a room
+Client can join a channel
     Done
-Client can leave a room
+Client can leave a channel
     Done
-Client can list members of a room
+Client can list members of a channel
     Done
 Multiple clients can connect to a server
     Done
-Client can send messages to a room
+Client can send messages to a channel
     Done
-Client can join multiple (selected) rooms
+Client can join multiple (selected) channels
     Done
-Client can send distinct messages to multiple (selected) rooms
+Client can send distinct messages to multiple (selected) channels
     Done
 Client can disconnect from a server
     Done
@@ -39,3 +39,8 @@ Extra: Private or Ephemeral Messaging
     Done
 Extra: Secure messaging
     Possible
+
+    Verify graceful exits
+    Clean code
+    add queues
+    

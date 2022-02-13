@@ -26,23 +26,26 @@ This memo describes the communication protocol for an IRC-style client/server sy
 
 Table of Contents
 1. Introduction
-2. Conventions used in this document
-3. Basic Information
-4. Message Infrastructure
-4.1. Message Object
-4.2. Message Types
-4.3. OP Codes
-4.4. Usage
-5. The Client
-5.1. Login
-5.2. Listening
-5.3. Chatting
-5.4. Commands
-5.4.1 Rooms
-5.4.2 Room Selecting
-5.4.3 Private Messages
-5.4.4 Server Information
-5.4.5 Quitting
+1.1 Definitions
+1.1.1 Clients
+1.1.2 Server
+1.1.3 Message
+1.1.4 channels
+2. Message Infrastructure
+2.1. Message Object
+2.2. Message Types
+2.3. OP Codes
+2.4. Usage
+3. The Client
+3.1. Login
+3.2. Listening
+3.3. Chatting
+3.4. Commands
+3.4.1 channels
+3.4.2 channel Selecting
+3.4.3 Private Messages
+3.4.4 Server Information
+3.4.5 Quitting
 6. The Server
 6.1. Initialization
 6.2. Listening
@@ -52,11 +55,11 @@ Table of Contents
 6.3.1. Text Chat
 6.3.2. Whispers
 6.3.3. Commands
-6.4. Room and User Management
+6.4. channel and User Management
 6.4.1. Client Quitting
 6.5. Server-side commands
-7. Rooms
-7.1 Room Structure
+7. channels
+7.1 channel Structure
 8. Error Handling
 9. Conclusion & Future Work
 10. Security Considerations
@@ -64,11 +67,17 @@ Table of Contents
 11.1. Normative References
 12. Acknowledgments
 
+1. Introduction 
+ 
+This protocol described in this document is a smaller variation to the Internet Relay Chat (IRC) [RFC1459]. This protocol allows clients to communicate with each other via simple text message. This system employs a client-server architecture where the central server broadcasts client-originating messages. This variation supports a single server only.
 
+Users can create, join, and leave channels freely. These channels are groups of users that are 'subscribed' to each other's messages. If a user has select to talk in a channel, they will broadcast to other users in the channel.
+
+Users can also send private messages directly to other users. 
 
 10. Security Considerations 
  
-Messages sent using this system have no protection against inspection, tampering or outright forgery. The server sees all messages that are sent through the use of this service. 'Private' messaging may be easily intercepted by a 3rd party that is able to capture network traffic. Users wishing to use this system for secure communication should use/implement their own user-to-user encryption protocol.  
+Messages sent using this system have no protection against inspection, tampering or outright forgery. The server sees all messages that are sent through the use of this service. 'Private' messaging may be easily intercepted by a 3rd party that is able to capture network traffic. Users wishing to use this system for secure communication should use/implement their own user-to-user encryption protocol.
  
 11. IANA Considerations 
  

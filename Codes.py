@@ -1,26 +1,26 @@
 # static Object for codes
-class Helper(object):
+class Codes(object):
     PACKET_SIZE = 4096
 
     NOT_INIT = ""
     STR_INFO = "[INFO]"
     STR_WARN = "[WARN]"
     STR_ERR = "[ERROR]"
-    ROOM_DEFAULT_NAME = "Lobby"
+    CHANNEL_DEFAULT_NAME = "Lobby"
 
     MSG_NAME = "username"
     MSG_TEXT = "text"
-    MSG_ROOM = "room"
+    MSG_CHANNEL = "channel"
     MSG_INFO = "info"
     MSG_SIG = "signal"
     MSG_QUIT = "quit"
     MSG_WHISPER = "whisper"
-    ROOM_JOIN = "join"
-    ROOM_CREATE = "create"
-    ROOM_LEAVE = "leave"
-    ROOM_DELETE = "delete"
+    CHANNEL_JOIN = "join"
+    CHANNEL_CREATE = "create"
+    CHANNEL_LEAVE = "leave"
+    CHANNEL_DELETE = "delete"
     INFO_USERS = "users"
-    INFO_ROOMS = "rooms"
+    INFO_CHANNELS = "channels"
     QUIT_GRACEFUL = "graceful"
     NO_SUBTYPE = ""
 

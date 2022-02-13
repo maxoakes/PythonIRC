@@ -1,13 +1,14 @@
 import time
+from Codes import Codes as OP
 
 class User:
-    address = ""
-    port = -1
-    username = "_default_"
-    id = -1
-    connectTime = -1 #string
-    socket = -1 #socket
-    rooms = [] #strings
+    address = OP.NOT_INIT #string
+    port = OP.NOT_INIT #int
+    username = OP.NOT_INIT #string
+    id = OP.NOT_INIT #int
+    connectTime = OP.NOT_INIT #string
+    socket = OP.NOT_INIT #socket object
+    channels = OP.NOT_INIT #list of strings
 
     def __init__(self, address, port, socket, username):
         self.address = address
@@ -16,12 +17,12 @@ class User:
         self.connectTime = time.asctime( time.localtime(time.time()) )
         self.id = round(time.time() * 1000)
         self.username = username
-        self.rooms = []
+        self.channels = []
 
-    def leaveRoom(self, room):
+    def leaveChannel(self, channel):
         status = False
-        if (room in self.rooms):
-            self.rooms.remove(room)
+        if (channel in self.channels):
+            self.channels.remove(channel)
             status = True
         return status
 

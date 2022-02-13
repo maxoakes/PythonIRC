@@ -1,8 +1,8 @@
 import time
 
-class Room:
+class Channel:
     name = "__default__"
-    description = "This is a room where we can all listen to eachother."
+    description = "This is a channel where we can all listen to eachother."
     createdBy = ""
     createTime = -1
     canBeDeleted = True
@@ -19,17 +19,17 @@ class Room:
     def setDescription(self, desc):
         self.description = desc
     
-    def joinRoom(self, joiner):
+    def joinChannel(self, joiner):
         self.currentUsers.append(joiner)
 
-    def leaveRoom(self, leaver):
+    def leaveChannel(self, leaver):
         status = False
         if (leaver in self.currentUsers):
             self.currentUsers.remove(leaver)
             status = True
         return status
 
-    def getRoom(self):
+    def getChannel(self):
         return "%s: created %s by %s" % \
             (self.name, self.createdBy, self.createTime)
 
