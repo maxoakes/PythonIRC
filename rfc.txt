@@ -62,7 +62,7 @@ Table of Contents
 4.5. Server-side commands
 5. Channels
 5.1 Channel Structure
-6. Server-side Client Stucture
+6. Server-side Client Structure
 7. Error Handling
 8. Conclusion & Future Work
 9. Security Considerations
@@ -82,11 +82,11 @@ The server is a single instance; a single server will be sending and receiving i
 
 1.1.2. Client
 
-Multiple clients can connect to one server instance. The client is created with an input of an address and port of a server to connect to. The client's role is only to log into the server, send and recieve messages. Very little is done outside of this. In this document, "client" will be referring to the program running this chat protocol, and "user" will be referring to the person that is using the client, and inputting information into the client's text input field and reading incoming messages.
+Multiple clients can connect to one server instance. The client is created with an input of an address and port of a server to connect to. The client's role is only to log into the server, send and receive messages. Very little is done outside of this. In this document, "client" will be referring to the program running this chat protocol, and "user" will be referring to the person that is using the client, and inputting information into the client's text input field and reading incoming messages.
 
 1.1.3. Message
 
-Messages are the piece of information that is passed between client and server. It contains several fields, one of which is the actual text content that the user will see. Other fields are for internal use by the server and client to decide how the entire message is processed. In this document, "message" will refer this object, "text" will refer to what the user visually sees on the client, and "packet" will refer to the raw binary data that is sent over the internet.
+Messages are the piece of information that is passed between client and server. It contains several fields, one of which is the actual text content that the user will see. Other fields are for internal use by the server and client to decide how the entire message is processed. In this document, "message" will refer to this object, "text" will refer to what the user visually sees on the client, and "packet" will refer to the raw binary data that is sent over the internet.
 
 1.1.4. Channel
 
@@ -103,7 +103,7 @@ The message is the key piece of information that is used by server and client, a
 A message is composed of several fields. All of which are used by the server or client for processing, or for the user for information.
 
     a. Sender
-        This field is a string of the original sender of the Message, this will be the username of the client. If it is a message from the server, it will be name of the server that was specified during server Initialization.
+        This field is a string of the original sender of the Message, this will be the username of the client. If it is a message from the server, it will be the name of the server that was specified during server Initialization.
     b. Category
         This field is used by server and client as a way to find out what the packet does. (Note that the name is category and not 'type', because in many programming languages, 'type' is a reserved word, even though it is the most appropriate for this field). Types of categories are MSG_NAME, MSG_TEXT, MSG_CHANNEL, MSG_INFO, MSG_SIG, MSG_QUIT. Definitions of these will be in the next subsection of this document. When a client or server receives a message, the category is the first field that is checked to find out what is to be done with the message.
     c. Subtype
@@ -111,15 +111,15 @@ A message is composed of several fields. All of which are used by the server or 
     d. Status
         This field is essentially a boolean field. Its possible types are SIG_SUCCESS, SIG_FAIL, SIG_REQUEST, SIG_INVALID, SIG_USED. Half of these values are for types of responses to name input from the client.
     e. Channels
-        This field is a list strings of channel names. This field is only checked when the category is of type MSG_TEXT, indicating that the message contains a user's chat text.
+        This field is a list of strings of channel names. This field is only checked when the category is of type MSG_TEXT, indicating that the message contains a user's chat text.
     f. Content
-        This is usually the largest part of the message object. For MSG_TEXT type messages, this is where the user's text chat will go. For nearly all other categories, this field will contain the content of the query that was sent from the client to the server, such as a submitted username, or the name of a room to create. No matter, the result of the query, the server would send back the same content to the client as a type of confirmation of what was submitted to the server.
+        This is usually the largest part of the message object. For MSG_TEXT type messages, this is where the user's text chat will go. For nearly all other categories, this field will contain the content of the query that was sent from the client to the server, such as a submitted username, or the name of a room to create. No matter the result of the query, the server would send back the same content to the client as a type of confirmation of what was submitted to the server.
     g. TimeSent
         This field is a string in HH:MM:SS format. It is generated automatically on message creation on the server or client, and is meant to be user-readable as a way to tell when the message was sent. It is not referred to by the server or client after message creation, and is only meant for the user.
 
 2.3. OP Codes
 
-Each message category and subtype include several OP codes (or, codes) that are meant to be flags that are interpretted by the server or client when a message is received. Each category code and its respective subtype codes are listed below with definitions.
+Each message category and subtype include several OP codes (or, codes) that are meant to be flags that are interpreted by the server or client when a message is received. Each category code and its respective subtype codes are listed below with definitions.
 
     Category: MSG_NAME
         This code is meant to indicate that the message contains a submitted username of a client. In this type of message, there is no subtype (left as null), the content will be the username. The status can indirectly indicate who the message is coming from and what the decision about its validity is.
@@ -138,7 +138,7 @@ Each message category and subtype include several OP codes (or, codes) that are 
             CHANNEL_LEAVE, meaning that the request or response is about a client leaving a channel. This query would return a fail if the client was not in the channel, or if the channel does not exist.
             CHANNEL_DELETE, meaning that the request or response is about a client wanting to delete a channel. This query would return a fail if the channel does not exist, there are clients in the channel, or if the channel is flagged as undeletable.
     Category: MSG_INFO
-        This category is meant to indicate that the message contains a query or response for a client about a status of the server. The subtype indicates what type of information is sought, and the content in the reponding message will be a string in sentance format about what the server says about that query. For the INFO_USERS subtype, the content field can optionally contain a channel name, meaning that the client is asking about a specific channel.
+        This category is meant to indicate that the message contains a query or response for a client about a status in the server. The subtype indicates what type of information is sought, and the content in the responding message will be a string in sentence format about what the server says about that query. For the INFO_USERS subtype, the content field can optionally contain a channel name, meaning that the client is asking about a specific channel.
         Possible subtypes are:
             INFO_USERS, meaning that the client is asking about the list of client's usernames currently in the server. If the content field is not null, the server's response will be the list of client usernames currently in that specified channel. If a channel is not specified, this will always return successful, and will return a list of client usernames currently connected to the server. If a channel is specified and it does not exist, it will return as a failure.
             INFO_CHANNELS, meaning that the client is asking for a list of channels currently in the server. The content field is ignored for this subtype, and will always return as successful.
@@ -179,15 +179,15 @@ The client is meant to be a simple process, only listening to the server and per
 
 3.1. Login
 
-Upon launching of the client process, the user is asked for a hostname and port. If no hostname is submitted, the client will use localhost (127.0.0.1). If no port is submitted, it will use the default of 7778. If the client fails to connect to a server within some number of tries, the process will close. If a connection is successful, the client will send an introductery packet to the server, not using the proprietary message object.
+Upon launching of the client process, the user is asked for a hostname and port. If no hostname is submitted, the client will use localhost (127.0.0.1). If no port is submitted, it will use the default of 7778. If the client fails to connect to a server within some number of tries, the process will close. If a connection is successful, the client will send an introductory packet to the server, not using the proprietary message object.
 
-The client will then prompt the user for a username. When submitted, the client will send the server a message with the username. If the username is in use or not valid, the client will state so to the user, and the user will be prompted to submit a username again. Realistically, the only restrictions on usernames are that they not contain spaces (ASCII 0x20), as user command input is dependant on spaces to create message categories. If the username that was submitted was valid, the client will be placed into the default channel (typically called the "Lobby"), and the server will send a message to the client stating that this channel joining was done. The client will then add the Lobby channel to its local list that tracks currently joined channels.
+The client will then prompt the user for a username. When submitted, the client will send the server a message with the username. If the username is in use or not valid, the client will state so to the user, and the user will be prompted to submit a username again. Realistically, the only restrictions on usernames are that they do not contain spaces (ASCII 0x20), as user command input is dependent on spaces to create message categories. If the username that was submitted was valid, the client will be placed into the default channel (typically called the "Lobby"), and the server will send a message to the client stating that this channel joining was done. The client will then add the Lobby channel to its local list that tracks currently joined channels.
 
 The client will then launch a second thread to listen for more messages from the server. The main thread will be listening for user input.
 
 3.2. Listening
 
-In this second thread, the client will be listening for server messages indefinately. Upon receiving of a message, the client will decode the byte message into a readable message. If the message is a MSG_TEXT, the message will be interpretted as a text chat from a client, and be shown to the user in the readable format:
+In this second thread, the client will be listening for server messages indefinitely. Upon receiving a message, the client will decode the byte message into a readable message. If the message is a MSG_TEXT, the message will be interpreted as a text chat from a client, and be shown to the user in the readable format:
 
 <time> [Channel1]...[ChannelN] <source username>: <chat text>
 
@@ -225,11 +225,11 @@ A client is able to talk in more than one channel per text chat input. This is d
 
 /shoutset <channel 1>...<channel N>
 
-The shoutset command allows the client to send or "shout" text chat messages to multiple channels at the same time. When this command is inputted, the client will select a subset of channels that the client has joined, and apply them to the shoutset list. This command's operation is done client-side only; no messages are sent to the server. A client cannout add a channel to its shoutset list if it is not already joined to the channel via "/channel join".
+The shoutset command allows the client to send or "shout" text chat messages to multiple channels at the same time. When this command is inputted, the client will select a subset of channels that the client has joined, and apply them to the shoutset list. This command's operation is done client-side only; no messages are sent to the server. A client cannot add a channel to its shoutset list if it is not already joined to the channel via "/channel join".
 
 /shout <text>
 
-Using the shout command, the client will generate a message very similar to a regular chat message, but the room field in the message will compose of the shoutset list that was established with the shoutset command. The server will then broadcast the chat message to the clients that are in each of the rooms that the client specified. After a shout is performed, the shoutset list is maintained, so there is no need to rebuild the list everytime, allowing /shout to be used quickly in succession is needed.
+Using the shout command, the client will generate a message very similar to a regular chat message, but the room field in the message will be composed of the shoutset list that was established with the shoutset command. The server will then broadcast the chat message to the clients that are in each of the rooms that the client specified. After a shout is performed, the shoutset list is maintained, so there is no need to rebuild the list every time, allowing /shout to be used quickly in succession is needed.
 
 Finally, for the default text chatting with only one channel at a time, the user can input the following command to switch focus:
 
@@ -258,11 +258,11 @@ For "/info channels", the client will send a message to the server asking for th
 
 3.4.5 Quitting
 
-Graceful exitting of the client application process is done via the "/quit" command. When this command is inputted, the client will send a MSG_QUIT message to the server and subsequently close the socket, and close all threads of the application. Using a keyboard shortcut such as Control-C will also perform the actions of the "/quit" command.
+Graceful exiting of the client application process is done via the "/quit" command. When this command is inputted, the client will send a MSG_QUIT message to the server and subsequently close the socket, and close all threads of the application. Using a keyboard shortcut such as Control-C will also perform the actions of the "/quit" command.
 
 3.4.6 Aliases
 
-Due to the length of the words used in each command, each command includes aliases allowing for faster input. For each command, one can enter "/<first character of leading command>", such as "/t" for "/talk" or "/ss" for "/shoutset". The command parameters will remain uneffected. The command and their aliases perform the same actions.
+Due to the length of the words used in each command, each command includes aliases allowing for faster input. For each command, one can enter "/<first character of leading command>", such as "/t" for "/talk" or "/ss" for "/shoutset". The command parameters will remain unaffected. The command and their aliases perform the same actions.
 
 4. The Server
 
@@ -280,9 +280,9 @@ Listening for clients is performed on a seperate thread from the main thread.
 
 When a client connects to the server, a new thread will be created for them. The total number of threads running on the server will be 2+N, where N is the number of clients.
 
-Upon client connection, the dedicated client thread will be listening for a message with the MSG_NAME category. The content field in this message will contain the username for the client. Upon receiving the message, the server will check that the username is valid, meaning that the name contain alphanumeric characters only and no spaces, AND that it is not already in use. The server will then send a MSG_NAME message back to the user with the response status of SIG_SUCCESS, SIG_USED, SIG_INVALID. If the response given back to the client is SIG_INVALID or SIG_USED, the server will continue to listen for a username.
+Upon client connection, the dedicated client thread will be listening for a message with the MSG_NAME category. The content field in this message will contain the username for the client. Upon receiving the message, the server will check that the username is valid, meaning that the name contains alphanumeric characters only and no spaces, AND that it is not already in use. The server will then send a MSG_NAME message back to the user with the response status of SIG_SUCCESS, SIG_USED, SIG_INVALID. If the response given back to the client is SIG_INVALID or SIG_USED, the server will continue to listen for a username.
 
-When a username is valid, the SIG_SUCCESS message will be sent to the client, and the server will create a new object to house the client's information (primarily its socket information, active channels, and username). This new client object will be added to a the client hashtable of the server as a value, and the username as a key. This new client will also be added to the default channel, Lobby. This process is called "Registration".
+When a username is valid, the SIG_SUCCESS message will be sent to the client, and the server will create a new object to house the client's information (primarily its socket information, active channels, and username). This new client object will be added to the client hashtable of the server as a value, and the username as a key. This new client will also be added to the default channel, Lobby. This process is called "Registration".
 
 4.2.2. Listening for Messages from Existing Clients
 
@@ -294,11 +294,11 @@ Upon receiving a message from a client, the server will first check the category
 
 4.3.1. Text Chat
 
-If the message if of category MSG_TEXT, it is a generic text chat. The server will then read the channel field of the message, and then send the message to each client in the specified channels. Only the status field is changed to SIG_SUCCESS in the message. No other field is modified.
+If there is a message of category MSG_TEXT, it is a generic text chat. The server will then read the channel field of the message, and then send the message to each client in the specified channels. Only the status field is changed to SIG_SUCCESS in the message. No other field is modified.
 
 4.3.2. Whispers
 
-If the message is of category MSG_WHISPER, the message will be sent directly to the client specified by the username in the subtype field. No fields are modified, and onyl the category and subtype fields are accessed when the username is valid. If the username is not valid, a new message is sent from the server to the origin client saying in user-readable text that the message could not be delivered.
+If the message is of category MSG_WHISPER, the message will be sent directly to the client specified by the username in the subtype field. No fields are modified, and only the category and subtype fields are accessed when the username is valid. If the username is not valid, a new message is sent from the server to the origin client saying in user-readable text that the message could not be delivered.
 
 4.4. Non-Text Commands
 
@@ -316,7 +316,7 @@ Both of these channel joining and leaving functions are 'atomic', so any joining
 
 In the case of channel creation, the message's content field will be read to get the name of the channel to be created, and the new channel will be added to the server's local channel hashtable. The channel object will be the value, and the name of the channel will be the key. A message will then be sent to the client that the operation was successful.
 
-For room deletion, the equivilent process will take place; the channel will be removed from the local hashtable, and the client will be notified of successful deletion. If any clients are still in the channel that is being deleted, the action will fail and the client will be notified that it cannot be deleted.
+For room deletion, the equivalent process will take place; the channel will be removed from the local hashtable, and the client will be notified of successful deletion. If any clients are still in the channel that is being deleted, the action will fail and the client will be notified that it cannot be deleted.
 
 4.4.2. Client Quitting
 
@@ -328,7 +328,7 @@ When the client sends an EOF packet to the server, the server will end the dedic
 
 In the event a client sends a message of category MSG_INFO, the server will be looking at the current state of its client list or channel list.
 
-If the subtype is INFO_CHANNELS, the local channel hashtable's keys will be read, and a new message will be send to the client with a user-readable list of channel names in the content field.
+If the subtype is INFO_CHANNELS, the local channel hashtable's keys will be read, and a new message will be sent to the client with a user-readable list of channel names in the content field.
 
 If the subtype is INFO_USERS, the content field will be checked. If the content field is blank, the client is asking for a list of clients connected to the server. The client hashtable's keys will be read, and written to a message that will be sent to the inquiring client. If the client field has a valid channel name, the specified channel will have its user list read, and the server will create a message containing the list of client usernames in that channel, and send it to the inquiring client.
 
@@ -339,7 +339,7 @@ After the client listening thread is created, the main thread is still running. 
 5. Channels
 5.1 Channel Structure
 
-Within the server, a hashtable of channels is kept. This hashtable is created before any clients can join the server. These channels are encapsulated in a channel object. This oject contains the following fields:
+Within the server, a hashtable of channels is kept. This hashtable is created before any clients can join the server. These channels are encapsulated in a channel object. This object contains the following fields:
 
     a. Name
         The user-readable name of the channel. It is the primary identifier of the channel, and the key for the hashtable for a channel.
@@ -363,7 +363,7 @@ There are several functions within a channel
     c. leaveChannel
         An encapsulated way of iterating over the CurrentUsers list and removing a client from the list
 
-6. Server-side Client Stucture
+6. Server-side Client Structure
 
 A hashtable of clients is kept server-side as a way to track what channels a client is in, and what socket each client belongs to. When a client connects to the server, a new object is created for the client, and the username, and network/socket information is kept in this object, along with channel information. A server-sider client object contains the following fields:
 
@@ -388,9 +388,9 @@ If a client fails to connect to the server in the middle of a session, the clien
 
 8. Conclusion & Future Work
 
-Many small enhacements can be done to this protocol. Firstly, the private messages to pass through the server. An alternative to this is that the client could ask the server for the socket information of the target user, and the server could supply that. Then the client could connect directly with that user to deliver the message.
+Many small enhancements can be done to this protocol. Firstly, the private messages pass through the server. An alternative to this is that the client could ask the server for the socket information of the target user, and the server could supply that. Then the client could connect directly with that user to deliver the message.
 
-Additionally, whether the client has private messages go throught the server or directly to the target client, the messages could be encrypted in some way. Currently, they are in plain text.
+Additionally, whether the client has private messages go through the server or directly to the target client, the messages could be encrypted in some way. Currently, they are in plain text.
 
 9. Security Considerations
  
@@ -416,6 +416,10 @@ draft-irc-pdx-cs594-00.txt
 
  
  
+
+
+
+
 Maxwell Oakes
 Portland State University Computer Science 
 1825 SW Broadway, Portland, OR 97201 
