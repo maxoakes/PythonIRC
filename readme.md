@@ -25,6 +25,7 @@ See rfc.txt for details.
 
 # TODO:
 * INFO_USERS, meaning that the client is asking about the list of client's usernames currently in the server. If the content field is not null, the server's response will be the list of client usernames currently in that specified channel. If a channel is not specified, this will always return successful. If a channel is specified and it does not exist, it will return as a failure.
+* Graceful exitting of the client application process is done via the "/quit" command. When this command is inputted, the client will send a MSG_QUIT message to the server and subsequently close the socket, and close all threads of the application. Using a keyboard shortcut such as Control-C will also perform the actions of the "/quit" command. THE CLIENT SHOULD AWAIT EOF FROM SERVER BEFORE CLOSING THE SOCKET. will need to revise 3.4.5
 * Verify graceful exits
 * Clean code even more
 * add queues

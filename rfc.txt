@@ -1,5 +1,5 @@
 Internet Relay Chat Class Project
-Draft-irc-pdx-cs594-00.txt
+irc-draft-cs594-v0-1.txt
 
 Status of this Memo
 
@@ -46,6 +46,7 @@ Table of Contents
 3.4.3 Private Messages
 3.4.4 Server Information
 3.4.5 Quitting
+3.4.6 Aliases
 4. The Server
 4.1. Initialization
 4.2. Listening
@@ -54,18 +55,20 @@ Table of Contents
 4.3. Handling Client Messages
 4.3.1. Text Chat
 4.3.2. Whispers
-4.3.3. Commands
-4.4. channel and User Management
-4.4.1. Client Quitting
+4.4. Non-Text Commands
+4.4.1. Channel Management
+4.4.2. Client Quitting
+4.4.3. Table Information
 4.5. Server-side commands
 5. Channels
 5.1 Channel Structure
-6. Error Handling
-7. Conclusion & Future Work
-8. Security Considerations
-9. IANA Considerations
-10.1. Normative References
-11. Acknowledgments
+6. Server-side Client Stucture
+7. Error Handling
+8. Conclusion & Future Work
+9. Security Considerations
+10. IANA Considerations
+11.1. Normative References
+12. Acknowledgments
 
 1. Introduction 
  
@@ -199,18 +202,203 @@ If the message received was a MSG_WHISPER, a readable string will be presented t
 No other message object would come from the server. However, if an EOF comes from the server, the listening thread will close, and prompt the entire process to close gracefully.
 
 3.3. Chatting
+
+In the main thread of the application after the listening thread is spawned, the user will be able to input characters into the client. If the entered text starts with a special character (namely "/"), this indicates that this text input will be a command (discussed in the next section). If the First character is not that special character, it is a regular text chat string. Upon submitting (pressing "enter"), the client will create a MSG_TEXT type message with the chat text as the content, and send the message to the server. The server will then broadcast the message to certain users. See Section 4: Servers on how this works.
+
 3.4. Commands
+
+The client is able to input several commands to perform various actions, some local to the client, and others that create messages for the server.
+
 3.4.1 Channels
+
+The "/channel" command has many uses and subtypes. Its usage is the following:
+
+/channel <create OR join OR leave OR delete> <channel name>
+
+No matter the (valid) input for this command, a MSG_CHANNEL message will be sent to the server, with the corresponding message subtype: CHANNEL_CREATE, CHANNEL_JOIN, CHANNEL_LEAVE or CHANNEL_DELETE. The channel name will be placed in the message content, and the message status will be a SIG_REQUEST.
+
+Upon response to this sent query message, the client will receive a message regarding its success. If it is a CHANNEL_JOIN or CHANNEL_LEAVE request, the client's local list will be updated accordingly.
+
 3.4.2 Channel Selecting
+
+A client is able to talk in more than one channel per text chat input. This is done with the following commands:
+
+/shoutset <channel 1>...<channel N>
+
+The shoutset command allows the client to send or "shout" text chat messages to multiple channels at the same time. When this command is inputted, the client will select a subset of channels that the client has joined, and apply them to the shoutset list. This command's operation is done client-side only; no messages are sent to the server. A client cannout add a channel to its shoutset list if it is not already joined to the channel via "/channel join".
+
+/shout <text>
+
+Using the shout command, the client will generate a message very similar to a regular chat message, but the room field in the message will compose of the shoutset list that was established with the shoutset command. The server will then broadcast the chat message to the clients that are in each of the rooms that the client specified. After a shout is performed, the shoutset list is maintained, so there is no need to rebuild the list everytime, allowing /shout to be used quickly in succession is needed.
+
+Finally, for the default text chatting with only one channel at a time, the user can input the following command to switch focus:
+
+/talk <channel>
+
+When a channel is selected via /talk, the user's regular text chat input (without commands) will go to the selected channel. This command will only be able to select a channel that the client is joined to via "/channel join".
+
 3.4.3 Private Messages
+
+It is possible to send messages directly to one client, ignoring channels.
+
+/whisper <username> <text>
+
+When the command is submitted, the client will receive a chat message from the server saying that the user is not in the server, or the client will receive a copy of the message that was sent if the user is in the server, and did receive the message. The target client does not need to be in any shared channels, they just need to be in the server at the same time.
+
 3.4.4 Server Information
+
+One general command allows querying of the server for information for the user.
+
+/info <users> [channel name]
+/info <channels>
+
+For "/info users", the client will send a MSG_INFO message to the server to query the list of users in the server. Optionally, the user can input a channel name. No matter the valid input, the server will send back a message with content in a user-readable format, and the content will be displayed for the user. If the user did not specify a channel, the message will contain a list of all of the servers in the server. If the user did specify a channel, the list returned will contain only the list of users in that channel. No matter the valid input's reponse, the content's string will also contain the number of users in the list that was returned.
+
+For "/info channels", the client will send a message to the server asking for the channel list of the server. The response will always be a success and the content of the response message will be a user-readable string of the channel names.
+
 3.4.5 Quitting
 
-10. Security Considerations 
+Graceful exitting of the client application process is done via the "/quit" command. When this command is inputted, the client will send a MSG_QUIT message to the server and subsequently close the socket, and close all threads of the application. Using a keyboard shortcut such as Control-C will also perform the actions of the "/quit" command.
+
+3.4.6 Aliases
+
+Due to the length of the words used in each command, each command includes aliases allowing for faster input. For each command, one can enter "/<first character of leading command>", such as "/t" for "/talk" or "/ss" for "/shoutset". The command parameters will remain uneffected. The command and their aliases perform the same actions.
+
+4. The Server
+
+The server application performs most of the processing of all of the client's queries. The server then sends back answers to queries to the appropriate clients. The server also maintains a list of all clients and rooms.
+
+4.1. Initialization
+
+Upon server instantiation, the server requires a hostname, port and display name. The hostname and port are used to create the server socket, and listening port for acquiring clients. If a port is not specified, the default port 7778 will be used. The server will then initialize a hashtable of channels and a hashtable of clients. The server will then start listening for connecting clients, and the first channel will be created called the "Lobby", and be added to the channel list.
+
+4.2. Listening
+
+Listening for clients is performed on a seperate thread from the main thread.
+
+4.2.1. Listening for New Clients
+
+When a client connects to the server, a new thread will be created for them. The total number of threads running on the server will be 2+N, where N is the number of clients.
+
+Upon client connection, the dedicated client thread will be listening for a message with the MSG_NAME category. The content field in this message will contain the username for the client. Upon receiving the message, the server will check that the username is valid, meaning that the name contain alphanumeric characters only and no spaces, AND that it is not already in use. The server will then send a MSG_NAME message back to the user with the response status of SIG_SUCCESS, SIG_USED, SIG_INVALID. If the response given back to the client is SIG_INVALID or SIG_USED, the server will continue to listen for a username.
+
+When a username is valid, the SIG_SUCCESS message will be sent to the client, and the server will create a new object to house the client's information (primarily its socket information, active channels, and username). This new client object will be added to a the client hashtable of the server as a value, and the username as a key. This new client will also be added to the default channel, Lobby. This process is called "Registration".
+
+4.2.2. Listening for Messages from Existing Clients
+
+When a client is registered, the dedicated client thread will be listening for messages from that client.
+
+4.3. Handling Client Messages
+
+Upon receiving a message from a client, the server will first check the category of the message.
+
+4.3.1. Text Chat
+
+If the message if of category MSG_TEXT, it is a generic text chat. The server will then read the channel field of the message, and then send the message to each client in the specified channels. Only the status field is changed to SIG_SUCCESS in the message. No other field is modified.
+
+4.3.2. Whispers
+
+If the message is of category MSG_WHISPER, the message will be sent directly to the client specified by the username in the subtype field. No fields are modified, and onyl the category and subtype fields are accessed when the username is valid. If the username is not valid, a new message is sent from the server to the origin client saying in user-readable text that the message could not be delivered.
+
+4.4. Non-Text Commands
+
+Handling commands is the bulk of the server's logic.
+
+4.4.1. Channel Management
+
+When a message of category MSG_CHANNEL is received, the server will then read the message subtype, then the content field for the channel name. No matter the channel action requested, if the channel name is invalid (does not exist, or if it already exists for the channel creation command), then a failure message is sent back to the client. If the channel name is found to be valid. The appropriate action is performed.
+
+In the case of a client joining a channel, the client object local to the server will be added to the channel's client list, and the channel will be added to the client's channel list.
+
+In the case of a client leaving a channel, the client object local to the server will have the channel removed from its channel list, and the channel will remove the client from its client list.
+
+Both of these channel joining and leaving functions are 'atomic', so any joining or leaving actions will result in correct modification of the channel's client list, and the client's channel list.
+
+In the case of channel creation, the message's content field will be read to get the name of the channel to be created, and the new channel will be added to the server's local channel hashtable. The channel object will be the value, and the name of the channel will be the key. A message will then be sent to the client that the operation was successful.
+
+For room deletion, the equivilent process will take place; the channel will be removed from the local hashtable, and the client will be notified of successful deletion. If any clients are still in the channel that is being deleted, the action will fail and the client will be notified that it cannot be deleted.
+
+4.4.2. Client Quitting
+
+In the event a client sends a MSG_QUIT message, the server will access the local client's channel list, and remove the client from each of the channel object's client lists. The client will then be removed from the client hashtable. When this message is received from the client, it is assumed that the client is taking its own steps to stop the client application process.
+
+When the client sends an EOF packet to the server, the server will end the dedicated thread function of listening to that client, then join with the main thread. This entire process is called "unregistering".
+
+4.4.3. Table Information
+
+In the event a client sends a message of category MSG_INFO, the server will be looking at the current state of its client list or channel list.
+
+If the subtype is INFO_CHANNELS, the local channel hashtable's keys will be read, and a new message will be send to the client with a user-readable list of channel names in the content field.
+
+If the subtype is INFO_USERS, the content field will be checked. If the content field is blank, the client is asking for a list of clients connected to the server. The client hashtable's keys will be read, and written to a message that will be sent to the inquiring client. If the client field has a valid channel name, the specified channel will have its user list read, and the server will create a message containing the list of client usernames in that channel, and send it to the inquiring client.
+
+4.5. Server-side commands
+
+After the client listening thread is created, the main thread is still running. At this point, a user is able to input commands into the terminal of the server. The three commands are "channels", "users" and "quit". The channel command will print to console the list of all channels, and all of the clients within each channel. The users command will return a list of all connected client's usernames. The quit command will attempt to close all connected client's socket connections and close gracefully.
+
+5. Channels
+5.1 Channel Structure
+
+Within the server, a hashtable of channels is kept. This hashtable is created before any clients can join the server. These channels are encapsulated in a channel object. This oject contains the following fields:
+
+    a. Name
+        The user-readable name of the channel. It is the primary identifier of the channel, and the key for the hashtable for a channel.
+    b. Description
+        This can be created after channel creation, and optional.
+    c. Created by
+        This is a string of the client's username that created the channel. Used for informational purposes only, and filled in automatically upon channel creation.
+    d. Create time
+        The time that the channel was created. In string format listing full date and time.
+    e. CanBeDeleted
+        A boolean flag stating if the channel can be deleted. The only channel that cannot be deleted (by default) is the Lobby channel. Any other client-created channel can be deleted.
+    f. CurrentUsers
+        A list of client usernames that are currently in the channel
+
+There are several functions within a channel
+
+    a. setDescription
+        Change the description of a channel
+    b. joinChannel
+        An encapsulated way of adding a user to the CurrentUsers list of a channel
+    c. leaveChannel
+        An encapsulated way of iterating over the CurrentUsers list and removing a client from the list
+
+6. Server-side Client Stucture
+
+A hashtable of clients is kept server-side as a way to track what channels a client is in, and what socket each client belongs to. When a client connects to the server, a new object is created for the client, and the username, and network/socket information is kept in this object, along with channel information. A server-sider client object contains the following fields:
+
+    a. Address
+        The address that the client is connected from
+    b. Port
+        The port that the server-side socket is connected to for this client
+    c. Username
+        The name that the client picked for itself. In the hashtable storing the clients, this is the key, and the value is this entire client object
+    d. connectTime
+        A string of the full date and time that the client connected to the server
+    e. socket
+        The full socket object of the client
+    f. Channels
+        A list of channel names that the client is connected to. Only contains the names as strings of the channels
+
+7. Error Handling
+
+The message status field is key to addressing errors. In general, it is the client that fields the errors and successes, and the server that distributes the errors and successes. For server-side errors such as users not existing in lists, or small, non-fatal issues, a failure signal is sent to the client that made the query to inform thhen that the action failed. In larger issues like a client disconnecting abruptly, the server will unregister them. This process is described in 4.4.2. Quitting.
+
+If a client fails to connect to the server in the middle of a session, the client will close gracefully. It will always attempt to inform the server that the client is closing, then close the socket and end all threads.
+
+8. Conclusion & Future Work
+
+Many small enhacements can be done to this protocol. Firstly, the private messages to pass through the server. An alternative to this is that the client could ask the server for the socket information of the target user, and the server could supply that. Then the client could connect directly with that user to deliver the message.
+
+Additionally, whether the client has private messages go throught the server or directly to the target client, the messages could be encrypted in some way. Currently, they are in plain text.
+
+9. Security Considerations
  
-Messages sent using this system have no protection against inspection, tampering or outright forgery. The server sees all messages that are sent through the use of this service. 'Private' messaging may be easily intercepted by a 3rd party that is able to capture network traffic. Users wishing to use this system for secure communication should use/implement their own user-to-user encryption protocol.
+As mentioned in the previous section, messages sent using this system have no protection against accessing or modification. The server sees all messages that are sent. Private messaging may be easily intercepted by a 3rd party via network traffic inspection. Users wishing to use this system for secure communication should use/implement their own user-to-user encryption protocol.
+
+However, it is worth noting that IP addresses of clients are hidden from one another. For some, having an IP address exposed to others can be unsettling. In this protocol, the server maintains all IP addresses, but each client knows only usernames, and there is no way for a client to get another client's IP address without the server sending that information itself.
  
-11. IANA Considerations 
+10. IANA Considerations 
  
 None 
  
@@ -220,10 +408,13 @@ None
  
 12. Acknowledgments 
  
-<Acknowledgments>
+Python's pickle library for data serialization. This library makes the message structure possible.
+https://docs.python.org/3/library/pickle.html
 
+IRC Project specification provided via 594 Canvas page. That document provided a structure for this document.
+draft-irc-pdx-cs594-00.txt
 
-Authors' Addresses 
+ 
  
 Maxwell Oakes
 Portland State University Computer Science 
