@@ -78,7 +78,7 @@ This protocol described in this document is a smaller variation to the Internet 
 
 1.1.1. Server
 
-The server is a single instance; a single server will be sending and receiving information from clients. It is run with an input of a hostname, port and name. The server does all message processing and name-checking.
+The server is a single instance; a single server will be sending and receiving information to and from clients. It is run with an input of a hostname, port and name. The server does all message processing and name-checking.
 
 1.1.2. Client
 
@@ -90,7 +90,7 @@ Messages are the piece of information that is passed between client and server. 
 
 1.1.4. Channel
 
-A channel is a grouping of clients within a server. Within one channel, a client can send messages to other clients that are 'subscribed' to the channel. A user can input into the client to electively create, join, leave and delete rooms. A channel can have no clients, or all clients in a server.
+A channel is a grouping of clients within a server. Within one channel, a client can send messages to other clients that are 'subscribed' to the channel. A user can input into the client to electively create, join, leave and delete rooms. A channel can have no clients, or all clients in a server, or any number of clients in between.
 
 2. Message Structure
 
@@ -100,22 +100,22 @@ The message is the key piece of information that is used by server and client, a
 
 2.2 Message Fields
 
-A Message is composed of several fields. All of which are used by the server or client for processing, or for the user for information.
+A message is composed of several fields. All of which are used by the server or client for processing, or for the user for information.
 
     a. Sender
-        This field is a string of the original sender of the Message, this will be the username of the client. If it is a message from the server, it will be name of the server that was specified during server instantiation.
+        This field is a string of the original sender of the Message, this will be the username of the client. If it is a message from the server, it will be name of the server that was specified during server Initialization.
     b. Category
-        This field is used by server and client as a way to find out what the packet does. (Note that the name is category and not 'type', because in many languages, 'type' is a reserved word, even though it is the most appropriate for this field). Types of categories are MSG_NAME, MSG_TEXT, MSG_CHANNEL, MSG_INFO, MSG_SIG, MSG_QUIT. Definitions of these will be in the next subsection. When a client or server receives a message, the category is the first field that is checked to find out what is to be done with the message.
+        This field is used by server and client as a way to find out what the packet does. (Note that the name is category and not 'type', because in many programming languages, 'type' is a reserved word, even though it is the most appropriate for this field). Types of categories are MSG_NAME, MSG_TEXT, MSG_CHANNEL, MSG_INFO, MSG_SIG, MSG_QUIT. Definitions of these will be in the next subsection of this document. When a client or server receives a message, the category is the first field that is checked to find out what is to be done with the message.
     c. Subtype
-        The subtype is like a secondary category. It is meant to tell what type of action is to be done with the category. A clear example is given in section 5: Rooms. Nearly all categories have unique subtypes. More information subtypes will be in the next subsection. In private messages, this field would contain the target client's username.
+        The subtype is like a secondary category. It is meant to tell what type of action is to be done with the category. Categories usually have subtypes that are unique to them. More information subtypes will be in the next subsection. In private messages, this field would contain the target client's username.
     d. Status
-        This field is essentially an boolean field. Its possible types are SIG_SUCCESS, SIG_FAIL, SIG_REQUEST, SIG_INVALID, SIG_USED. Half of these values are for types of responses to name input from the client.
+        This field is essentially a boolean field. Its possible types are SIG_SUCCESS, SIG_FAIL, SIG_REQUEST, SIG_INVALID, SIG_USED. Half of these values are for types of responses to name input from the client.
     e. Channels
-        This field is a list strings of channel names This field is only checked when the category is of type MSG_TEXT, indicating that the message contains a user's chat text.
+        This field is a list strings of channel names. This field is only checked when the category is of type MSG_TEXT, indicating that the message contains a user's chat text.
     f. Content
         This is usually the largest part of the message object. For MSG_TEXT type messages, this is where the user's text chat will go. For nearly all other categories, this field will contain the content of the query that was sent from the client to the server, such as a submitted username, or the name of a room to create. No matter, the result of the query, the server would send back the same content to the client as a type of confirmation of what was submitted to the server.
     g. TimeSent
-        This field is a string in HH:MM:SS format. It is generated autmatically on Message creation on the server or client, and is meant to be user-readable as a way to tell when the message was sent. It is not referred to by the server or client after message creation. 
+        This field is a string in HH:MM:SS format. It is generated automatically on message creation on the server or client, and is meant to be user-readable as a way to tell when the message was sent. It is not referred to by the server or client after message creation, and is only meant for the user.
 
 2.3. OP Codes
 
@@ -124,12 +124,12 @@ Each message category and subtype include several OP codes (or, codes) that are 
     Category: MSG_NAME
         This code is meant to indicate that the message contains a submitted username of a client. In this type of message, there is no subtype (left as null), the content will be the username. The status can indirectly indicate who the message is coming from and what the decision about its validity is.
         Possible statuses are:
-            SIG_REQUEST, meaning that this message is a query to the server asking if the username is good to use for the client. This status is only used by the client.
+            SIG_REQUEST, meaning that this message is a query to the server asking if the username is good to use for the client. This status is only sent from a client.
             SIG_SUCCESS, meaning that the username is valid, and not used by another client.
             SIG_INVALID, meaning that the username does not meet the naming criteria.
-            SIG_USED, meaning tha the username is already in use by another client
+            SIG_USED, meaning that the username is already in use by another client
     Category: MSG_TEXT
-        This code is meant to indicate that the message is simply for text communication. With this category only is the channel field used in the message. The channels that the message is directed to will be listed. With this category, there is no subtype.
+        This code is meant to indicate that the message is simply for text communication. In this category only, is the channel field of the message used. The channels that the message is directed to will be listed. With this category, there is no subtype.
     Category: MSG_CHANNEL
         This category is meant to indicate that the message contains an action regarding a channel. When sent by a client, the status will be SIG_REQUEST, indicating that it is a query to the server. The server will respond with a status of SIG_SUCCESS or SIG_FAIL, depending on if the action was valid or invalid, for whatever reason. In this category, the name of the channel will be in the content field.
         Possible subtypes are:
@@ -140,12 +140,12 @@ Each message category and subtype include several OP codes (or, codes) that are 
     Category: MSG_INFO
         This category is meant to indicate that the message contains a query or response for a client about a status of the server. The subtype indicates what type of information is sought, and the content in the reponding message will be a string in sentance format about what the server says about that query. For the INFO_USERS subtype, the content field can optionally contain a channel name, meaning that the client is asking about a specific channel.
         Possible subtypes are:
-            INFO_USERS, meaning that the client is asking about the list of client's usernames currently in the server. If the content field is not null, the server's response will be the list of client usernames currently in that specified channel. If a channel is not specified, this will always return successful. If a channel is specified and it does not exist, it will return as a failure.
+            INFO_USERS, meaning that the client is asking about the list of client's usernames currently in the server. If the content field is not null, the server's response will be the list of client usernames currently in that specified channel. If a channel is not specified, this will always return successful, and will return a list of client usernames currently connected to the server. If a channel is specified and it does not exist, it will return as a failure.
             INFO_CHANNELS, meaning that the client is asking for a list of channels currently in the server. The content field is ignored for this subtype, and will always return as successful.
     Category: MSG_WHISPER
         This category is meant to indicate that the message contains text directed to a single client. The subtype is the target client's username, and the content will be the text submitted by the source client. If the target client exists, the message will be directed to the target client with a status of SIG_SUCCESS, and if the target client does not exist, it will be sent back to the client with a status of SIG_FAIL. Even though private messages pass from client to server to client, this category is the only type of message that retains the original sender string. When the target client receives the private message, it will be as if it was sent from the original sender, even though it just came from the server.
     Category: MSG_QUIT
-        This message is sent only from client to server. It is meant to indicate that the client is gracefully closing its application process. No response is sent from the server. Subtype, status, and content fields  are inconsequential.
+        This message is sent only from client to server. It is meant to indicate that the client is gracefully closing its application process. No response is sent from the server. Subtype, status, and content fields are inconsequential.
 
 2.4. Usage and Examples
 
@@ -171,7 +171,7 @@ The above message was originally sent from the client with the username of "scou
         Content: "chitchat"
         TimeSent: 09:45:12
 
-A new message is created by the server and sent to the client. The category and subtype are unchanged, but the status is changed to SIG_SUCCESS, meaning that the request was accepted and processed. When the client receives this message, it will know that it is now in the "chitchat" channel.
+A new message is created by the server and sent to the client. The category and subtype are unchanged, but the status is changed to SIG_SUCCESS, meaning that the request was accepted and processed. When the client receives this message, it will know that it is now in the "chitchat" channel, and the client will track this accordingly.
 
 3. Client
 
@@ -181,7 +181,7 @@ The client is meant to be a simple process, only listening to the server and per
 
 Upon launching of the client process, the user is asked for a hostname and port. If no hostname is submitted, the client will use localhost (127.0.0.1). If no port is submitted, it will use the default of 7778. If the client fails to connect to a server within some number of tries, the process will close. If a connection is successful, the client will send an introductery packet to the server, not using the proprietary message object.
 
-The client will then prompt the user for a username. When submitted, the client will send the server a message with the username. If the username is in use or not valid, the client will state so to the user, and the user will be prompted to submit a username again. Realistically, the only restrictions on usernames are that they not contain spaces (ASCII 0x20), as user command input is dependant on spaces to create message categories. If the username that was submitted was valid, the client will be placed into the default channel (typically called the "Lobby"), and the server will send a message to the client stating that this channel joining was done. 
+The client will then prompt the user for a username. When submitted, the client will send the server a message with the username. If the username is in use or not valid, the client will state so to the user, and the user will be prompted to submit a username again. Realistically, the only restrictions on usernames are that they not contain spaces (ASCII 0x20), as user command input is dependant on spaces to create message categories. If the username that was submitted was valid, the client will be placed into the default channel (typically called the "Lobby"), and the server will send a message to the client stating that this channel joining was done. The client will then add the Lobby channel to its local list that tracks currently joined channels.
 
 The client will then launch a second thread to listen for more messages from the server. The main thread will be listening for user input.
 
