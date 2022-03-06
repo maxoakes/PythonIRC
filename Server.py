@@ -16,11 +16,11 @@ class Server:
     activeUsers = {}
     channels = {}
 
-    # init a server. Create socket, listening threads, await text input
+    # Init a server. Create socket, listening threads, await text input
     def __init__(self, hostname, port, serverName):
         self.serverName = serverName
 
-        # create an INET, STREAMing socket
+        # Create an INET, STREAMing socket
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if (self.hostname == ""):
             self.hostname = socket.gethostname()
@@ -28,17 +28,17 @@ class Server:
         if (port):
             self.port = port
 
-        # bind the socket to a public host, and a well-known port
+        # Bind the socket to a public host, and a well-known port
         self.serversocket.bind((hostname, self.port))
         print("Socket Bound: %s:%s" % (hostname, self.port))
         self.serversocket.listen()
         
-        # spawn thread to listen to connections
+        # Spawn thread to listen to connections
         connectionlistening = threading.Thread(target=self.listenForConnections)
         connectionlistening.setName("connectionListener")
         connectionlistening.start()
         
-        # terminal loop. Listens to text input via server terminal
+        # Terminal loop. Listens to text input via server terminal
         while self.serverAlive:
             try:
                 message = input("")
@@ -46,14 +46,14 @@ class Server:
             except KeyboardInterrupt:
                 self.fullShutdown()
 
-    # wait for clients to connect and their info to lists
+    # Wait for clients to connect and their info to lists
     def listenForConnections(self):
 
-        # create the default channel
+        # Create the default channel
         self.createChannel(OP.CHANNEL_DEFAULT_NAME,self.serverName,"The default channel",False)
 
         while self.serverAlive:
-            # accept connections from outside
+            # Accept connections from outside
             try:
                 (clientsocket, address) = self.serversocket.accept()
                 userConnectionInfo = (clientsocket, address[0], address[1])
@@ -98,7 +98,7 @@ class Server:
     def addUserToChannel(self, user, channel):
         self.channels[channel].joinChannel(user)
         self.activeUsers[user].channels.append(channel)
-        # send control message to user to say that they were added to channel
+        # Send control message to user to say that they were added to channel
         self.sendMessage(
             Message(self.serverName, OP.MSG_CHANNEL, OP.CHANNEL_JOIN, OP.SIG_SUCCESS, channel),
             self.activeUsers[user].socket
@@ -108,7 +108,7 @@ class Server:
     def removeUserFromChannel(self, user, channel):
         self.channels[channel].leaveChannel(user)
         self.activeUsers[user].leaveChannel(channel)
-        # send control message to user to say where removed from channel
+        # Send control message to user to say where removed from channel
         self.sendMessage(
             Message(self.serverName, OP.MSG_CHANNEL, OP.CHANNEL_LEAVE, OP.SIG_SUCCESS, channel),
             self.activeUsers[user].socket
@@ -124,7 +124,7 @@ class Server:
     # Message Receiving and Handling
     ###########################################################
 
-    #await the username submitted by the client
+    # Await the username submitted by the client
     def listenForUsername(self, clientsocket):
         while self.serverAlive:
             try:
@@ -169,32 +169,32 @@ class Server:
                 traceback.print_exc()
                 return False
 
-    # listen for messages from a client.
-    # this function is run for each client on independant threads
+    # Listen for messages from a client.
+    # This function is run for each client on independant threads
     def listenToClient(self, address, port, clientsocket):
-        # obtain username
+        # Obtain username
         username = self.listenForUsername(clientsocket)
         if not username:
             return
         self.registerUser(address, port, clientsocket, username)
         self.addUserToChannel(username, OP.CHANNEL_DEFAULT_NAME)    
         
-        # at this point, the user is registered, and we are now
-        # listening for user-generated messages
+        # At this point, the user is registered, and we are now listening for user-generated messages
         while self.serverAlive:
             try:
                 message = self.receiveMessage(clientsocket)
-                # if it is a simple text message, broadcast it to their channels
+                # If it is a simple text message, broadcast it to their channels
                 if message.category == OP.MSG_TEXT:
                     self.broadcast(message)
                     continue
-                # if it is not a text message, it is a command
+                # If it is not a text message, it is a command
                 self.handleUserCommand(message, clientsocket)
             except OSError:
                 print("%s Connection for %s likely closed" % (OP.STR_WARN, username))
                 self.unregisterUser(username)
                 return
 
+    # Receive and unpack message
     def receiveMessage(self, usersocket):
         bytes = usersocket.recv(OP.PACKET_SIZE)
         message = pickle.loads(bytes)
@@ -205,6 +205,7 @@ class Server:
     # Sending messages to clients
     ###########################################################
 
+    # Send a text message to all users that a message's channel list specifies
     def broadcast(self, message):
         toChannels = message.channels
         # print("going to channels %s" % toChannels)
@@ -222,6 +223,7 @@ class Server:
                 print("%s Unable to broadcast to %s" % (OP.STR_ERR, user))
                 self.unregisterUser(user)
 
+    # Attempt to send a message from one client to the other
     def whisper(self, message):
         if message.subtype in self.activeUsers.keys():
             targetSocket = self.activeUsers[message.subtype].socket
@@ -247,6 +249,7 @@ class Server:
             )
             self.unregisterUser(message.subtype)                
 
+    # Package and send message to destination client
     def sendMessage(self, message, socket):
         messageByte = pickle.dumps(message)
         socket.send(messageByte)
@@ -257,125 +260,159 @@ class Server:
     # Command Handling
     ###########################################################
 
+    # Parse text into the server's terminal
     def handleTerminalCommands(self, text):
-        if (text == "help"):
-            print("Available commands: 'quit', 'channels', 'users'")
-        if (text == "quit"):
-            self.fullShutdown()
-        if (text == "channels"):
-            print ("%s Current channels and occupants:" % OP.STR_INFO)
-            for channel in self.channels.keys():
-                print("|  %s " % channel)
-                for user in self.channels[channel].currentUsers:
-                    print("|    %s" % user)
-        if (text == "users"):
-            print ("%s Current users:" % OP.STR_INFO)
-            for user in self.activeUsers.keys():
-                print("  %s (In channels: %s)" % (user,", ".join(self.activeUsers[user].channels)))
+        match text:
+            case "help":
+                print("Available commands: 'quit', 'channels', 'users'")
+            case "quit":
+                self.fullShutdown()
+            case "channels":
+                print ("%s Current channels and occupants:" % OP.STR_INFO)
+                for channel in self.channels.keys():
+                    print("|  %s " % channel)
+                    for user in self.channels[channel].currentUsers:
+                        print("|    %s" % user)
+            case "users":
+                print ("%s Current users:" % OP.STR_INFO)
+                for user in self.activeUsers.keys():
+                    print("  %s (In channels: %s)" % (user,", ".join(self.activeUsers[user].channels)))
+            case _:
+                print ("Not a command. Type 'help' for list of commands")
 
-    # given a command from a user, handle it appropriately
+    # Given a command from a user, handle it appropriately
     def handleUserCommand(self, message, clientsocket):
-        # if the user sent a whisper to another client
-        if message.category == OP.MSG_WHISPER:
-            self.whisper(message)
-        # if the user entered "/info <channels or users>"
-        if message.category == OP.MSG_INFO:
-            # /info channels -> return list of channels on the server as a string
-            if message.subtype == OP.INFO_CHANNELS:
-                channelList = list(self.channels.keys())
-                channelListString = "Channels on the server are: "
-                for channel in channelList:
-                    channelListString = channelListString + ("%s " % channel)
-                self.sendMessage(
-                    Message(self.serverName, OP.MSG_INFO, OP.INFO_CHANNELS, OP.SIG_SUCCESS, channelListString),
-                    clientsocket
-                )
-            # /info users -> return list of users on the server as a string
-            if message.subtype == OP.INFO_USERS:
-                if message.content != "":
-                    targetChannel = message.content
-                    if targetChannel not in self.channels.keys():
-                        failString = "Channel %s does not exist" % message.content
+        match message.category:
+            # Message is a whisper to another client
+            case OP.MSG_WHISPER:
+                self.whisper(message)
+            # Message is a request for an action on a channel
+            case OP.MSG_INFO:
+                match message.subtype:
+                    # /info channels -> return list of channels on the server as a string
+                    case OP.INFO_CHANNELS:
+                        channelList = list(self.channels.keys())
+                        channelListString = "Channels on the server are: "
+                        for channel in channelList:
+                            channelListString = channelListString + ("%s " % channel)
                         self.sendMessage(
-                        Message(self.serverName, OP.MSG_INFO, OP.INFO_USERS, OP.SIG_FAIL, failString),
+                            Message(self.serverName, OP.MSG_INFO, OP.INFO_CHANNELS, OP.SIG_SUCCESS, channelListString),
+                            clientsocket
+                        )
+                    # /info users -> return list of users on the server as a string
+                    case OP.INFO_USERS:
+                        if message.content != "":
+                            targetChannel = message.content
+                            if targetChannel not in self.channels.keys():
+                                failString = "Channel %s does not exist" % message.content
+                                self.sendMessage(
+                                Message(self.serverName, OP.MSG_INFO, OP.INFO_USERS, OP.SIG_FAIL, failString),
+                                    clientsocket
+                                )
+                                return
+                            userList = self.channels[targetChannel].currentUsers
+                            userListString = "Currently %s users in channel %s: %s" % (len(userList), message.content, ", ".join(userList))
+                            self.sendMessage(
+                                Message(self.serverName, OP.MSG_INFO, OP.INFO_USERS, OP.SIG_SUCCESS, userListString),
+                                clientsocket
+                            )
+                            return
+                        userList = list(self.activeUsers.keys())
+                        userListString = "Currently %s users online: " % (len(userList))
+                        for user in userList:
+                            userListString = userListString + ("%s " % user)
+                        self.sendMessage(
+                            Message(self.serverName, OP.MSG_INFO, OP.INFO_USERS, OP.SIG_SUCCESS, userListString),
                             clientsocket
                         )
                         return
-                    userList = self.channels[targetChannel].currentUsers
-                    userListString = "Currently %s users in channel %s: %s" % (len(userList), message.content, ", ".join(userList))
-                    self.sendMessage(
-                        Message(self.serverName, OP.MSG_INFO, OP.INFO_USERS, OP.SIG_SUCCESS, userListString),
-                        clientsocket
-                    )
-                    return
-                userList = list(self.activeUsers.keys())
-                userListString = "Currently %s users online: " % (len(userList))
-                for user in userList:
-                    userListString = userListString + ("%s " % user)
-                self.sendMessage(
-                    Message(self.serverName, OP.MSG_INFO, OP.INFO_USERS, OP.SIG_SUCCESS, userListString),
-                    clientsocket
-                )
+            # /channel <create, join, leave, delete>
+            case OP.MSG_CHANNEL:
+                match message.subtype:
+                    # A channel join was requested
+                    case OP.CHANNEL_JOIN:
+                        if message.content in self.channels.keys():
+                            if message.sender not in self.channels[message.content].currentUsers:
+                                self.addUserToChannel(message.sender, message.content)
+                            else:
+                                print("%s User tried to join channel they were already in" % OP.STR_INFO)
+                                self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_JOIN, message.content, clientsocket)
+                        else:
+                            print("%s User tried to join channel that does not exist" % OP.STR_INFO)
+                            self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_JOIN, message.content, clientsocket)
+                    # A channel leave was requested
+                    case OP.CHANNEL_LEAVE:
+                        if message.content in self.channels.keys():
+                            if message.sender in self.channels[message.content].currentUsers:
+                                self.removeUserFromChannel(message.sender, message.content)
+                                self.sendMessage(
+                                    Message(self.serverName, OP.MSG_CHANNEL, OP.CHANNEL_LEAVE, OP.SIG_SUCCESS, message.content),
+                                    clientsocket
+                                )
+                            else:
+                                print("%s User tried to be removed from channel they were not in" % OP.STR_ERR)
+                                self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_LEAVE, message.content, clientsocket)
+                        else:
+                            print("%s User tried to be removed from channel that does not exist" % OP.STR_ERR)
+                            self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_LEAVE, message.content, clientsocket)
+                    # A channel creation was requested
+                    case OP.CHANNEL_CREATE:
+                        isValid = self.isNameValid(message.content)
+                        if (not isValid):
+                            print("%s User tried to create channel that had an invalid name" % OP.STR_ERR)
+                            self.sendMessage(
+                                Message(self.serverName, OP.INFO_CHANNELS, OP.CHANNEL_CREATE, OP.SIG_INVALID, message.content),
+                                clientsocket)
+                        if message.content not in self.channels.keys():
+                            self.createChannel(message.content, message.sender, "A new channel")
+                            self.sendMessage(
+                                Message(self.serverName, OP.MSG_CHANNEL, OP.CHANNEL_CREATE, OP.SIG_SUCCESS, message.content),
+                                clientsocket)
+                        else:
+                            print("%s User tried to create channel that already exists" % OP.STR_ERR)
+                            self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_CREATE, message.content, clientsocket)
+                    # Deletion of a channel is requested
+                    case OP.CHANNEL_DELETE:
+                        isValid = self.isNameValid(message.content)
+                        if message.content not in self.channels.keys():
+                            print("%s User tried to delete a channel that does not exist" % OP.STR_ERR)
+                            self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_DELETE, message.content, clientsocket)
+                            return
+                        if (not isValid):
+                            print("%s User tried to delete a channel that had an invalid name" % OP.STR_ERR)
+                            self.sendMessage(
+                                Message(self.serverName, OP.INFO_CHANNELS, OP.CHANNEL_CREATE, OP.SIG_INVALID, message.content),
+                                clientsocket)
+                            return
+                        if len(self.channels[message.content].currentUsers) > 0:
+                            print("%s User tried to delete a channel that still had clients in it" % OP.STR_ERR)
+                            self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_DELETE, message.content, clientsocket)
+                            return
+                        if (not self.channels[message.content].canBeDeleted):
+                            print("%s User tried to delete a channel that is not allowed to be deleted" % OP.STR_ERR)
+                            self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_DELETE, message.content, clientsocket)
+                            return
+                        else:
+                            del self.channels[message.content]
+                            print("%s The channel %s was deleted via client request" % (OP.STR_INFO, message.content))
+                            self.sendMessage(
+                                Message(self.serverName, OP.MSG_CHANNEL, OP.CHANNEL_DELETE, OP.SIG_SUCCESS, message.content),
+                                clientsocket)
+            # A client says they are leaving
+            case OP.MSG_QUIT:
+                self.unregisterUser(message.sender)
                 return
-
-        # /channel <create, join, leave, delete>. Arrives as tuple of (action, channel name)
-        if (message.category == OP.MSG_CHANNEL):
-            # if channel join is requested
-            if message.subtype == OP.CHANNEL_JOIN:
-                if message.content in self.channels.keys():
-                    if message.sender not in self.channels[message.content].currentUsers:
-                        self.addUserToChannel(message.sender, message.content)
-                    else:
-                        print("%s User tried to join channel they were already in" % OP.STR_INFO)
-                        self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_JOIN, message.content, clientsocket)
-                else:
-                    print("%s User tried to join channel that does not exist" % OP.STR_INFO)
-                    self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_JOIN, message.content, clientsocket)
-            # if channel leave is requested
-            if message.subtype == OP.CHANNEL_LEAVE:
-                if message.content in self.channels.keys():
-                    if message.sender in self.channels[message.content].currentUsers:
-                        self.removeUserFromChannel(message.sender, message.content)
-                        self.sendMessage(
-                            Message(self.serverName, OP.MSG_CHANNEL, OP.CHANNEL_LEAVE, OP.SIG_SUCCESS, message.content),
-                            clientsocket
-                        )
-                    else:
-                        print("%s User tried to be removed from channel they were not in" % OP.STR_ERR)
-                        self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_LEAVE, message.content, clientsocket)
-                else:
-                    print("%s User tried to be removed from channel that does not exist" % OP.STR_ERR)
-                    self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_LEAVE, message.content, clientsocket)
-            # if channel creation is requested
-            if message.subtype == OP.CHANNEL_CREATE:
-                isValid = self.isNameValid(message.content)
-                if (not isValid):
-                    print("%s User tried to create channel that had an invalid name" % OP.STR_ERR)
-                    self.sendMessage(
-                        Message(self.serverName, OP.INFO_CHANNELS, OP.CHANNEL_CREATE, OP.SIG_INVALID, message.content),
-                        clientsocket)
-                if message.content not in self.channels.keys():
-                    self.createChannel(message.content, message.sender, "A new channel")
-                    self.sendMessage(
-                        Message(self.serverName, OP.MSG_CHANNEL, OP.CHANNEL_CREATE, OP.SIG_SUCCESS, message.content),
-                        clientsocket)
-                else:
-                    print("%s User tried to create channel that already exists" % OP.STR_ERR)
-                    self.sendCommandFail(OP.MSG_CHANNEL, OP.CHANNEL_CREATE, message.content, clientsocket)
-        # if the user says they are leaving
-        if message.category == OP.MSG_QUIT:
-            self.unregisterUser(message.sender)
-            return
 
     ###########################################################
     # Helper Functions
     ###########################################################
 
-    #helper method to reduce line length
+    # Helper method to reduce line length
     def sendCommandFail(self, category, subtype, content, clientsocket):
         self.sendMessage(Message(self.serverName, category, subtype, OP.SIG_FAIL, content),
             clientsocket)
 
+    # Check if a string entered by a user is valid as a username or channel name
     def isNameValid(self, submittedName):
         if (submittedName == ""):
             return False
@@ -385,6 +422,7 @@ class Server:
             return False
         return True
 
+    # Gracefully kick out all users and close this application
     def fullShutdown(self):
         self.serverAlive = False
         usersToRemove = []

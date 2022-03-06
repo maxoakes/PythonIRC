@@ -176,6 +176,11 @@ class Client:
                                 if (message.status == OP.SIG_SUCCESS):
                                     print(serverResponse + "Successfully created " + message.content)
                                     continue
+                            # Deletion of channel successful
+                            case OP.CHANNEL_DELETE:
+                                if (message.status == OP.SIG_SUCCESS):
+                                    print(serverResponse + "Successfully deleted " + message.content)
+                                    continue
                         # Annouce failures
                         if (message.status == OP.SIG_INVALID):
                             print(serverResponse + "Channel name is not valid. Must be alphanumeric between 1-16 characters")
@@ -257,6 +262,8 @@ class Client:
                             self.sendMessage(Message(self.username, OP.MSG_CHANNEL, OP.CHANNEL_JOIN, OP.SIG_REQUEST, name))
                         if (action == "leave"):
                             self.sendMessage(Message(self.username, OP.MSG_CHANNEL, OP.CHANNEL_LEAVE, OP.SIG_REQUEST, name))
+                        if (action == "delete"):
+                            self.sendMessage(Message(self.username, OP.MSG_CHANNEL, OP.CHANNEL_DELETE, OP.SIG_REQUEST, name))
                 case "info" |"i":
                     if (len(components) == 1):
                         print("Refer to the /help command.")
