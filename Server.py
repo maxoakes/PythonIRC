@@ -160,7 +160,7 @@ class Server:
                     return submittedName
             except OSError:
                 print("%s Connection for unnamed %s likely closed" % (OP.STR_WARN, clientsocket.getpeername()))
-                return
+                return False
             except:
                 print("Unknown error while obtaining username")
                 traceback.print_exc()
@@ -171,6 +171,8 @@ class Server:
     def listenToClient(self, address, port, clientsocket):
         # obtain username
         username = self.listenForUsername(clientsocket)
+        if not username:
+            return
         self.registerUser(address, port, clientsocket, username)
         self.addUserToChannel(username, OP.CHANNEL_DEFAULT_NAME)    
         
