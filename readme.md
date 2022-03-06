@@ -24,7 +24,6 @@ See rfc.txt for details.
 * Extra: Secure messaging: Possible, might just site it as future work in RFC
 
 # TODO:
-* Graceful exitting of the client application process is done via the "/quit" command. When this command is inputted, the client will send a MSG_QUIT message to the server and subsequently close the socket, and close all threads of the application. Using a keyboard shortcut such as Control-C will also perform the actions of the "/quit" command. THE CLIENT SHOULD AWAIT EOF FROM SERVER BEFORE CLOSING THE SOCKET. will need to revise 3.4.5
 * Verify graceful exits
 * Clean code even more
 * add queues
