@@ -24,6 +24,5 @@ See rfc.txt for details.
 * Extra: Secure messaging: Possible, might just site it as future work in RFC
 
 # TODO:
-* Verify graceful exits
 * Clean code even more
 * add queues

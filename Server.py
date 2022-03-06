@@ -40,8 +40,11 @@ class Server:
         
         # terminal loop. Listens to text input via server terminal
         while self.serverAlive:
-            message = input("")
-            self.handleTerminalCommands(message)
+            try:
+                message = input("")
+                self.handleTerminalCommands(message)
+            except KeyboardInterrupt:
+                self.fullShutdown()
 
     # wait for clients to connect and their info to lists
     def listenForConnections(self):
