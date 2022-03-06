@@ -289,6 +289,12 @@ class Server:
             if message.subtype == OP.INFO_USERS:
                 if message.content != "":
                     targetChannel = message.content
+                    if targetChannel not in self.channels.keys():
+                        self.sendMessage(
+                        Message(self.serverName, OP.MSG_INFO, OP.INFO_USERS, OP.SIG_FAIL, targetChannel),
+                            clientsocket
+                        )
+                        return
                     userList = self.channels[targetChannel].currentUsers
                     userListString = "Currently %s users in channel %s: %s" % (len(userList), message.content, ", ".join(userList))
                     self.sendMessage(

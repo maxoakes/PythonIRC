@@ -147,8 +147,9 @@ class Client:
                         textString = message.content
                         print("[Whisper] %s %s: %s" % (timeSent, sender, textString))
                 elif (message.category == OP.MSG_INFO):
-                    if (message.status == OP.SIG_FAIL):
-                        print("unknown failure getting info")
+                    if (message.subtype == OP.INFO_USERS and message.status == OP.SIG_FAIL):
+                        print("Channel %s does not exist on the server." % message.content)
+                        continue
                     print(serverResponse + message.content)
                 elif (message.category == OP.MSG_CHANNEL):
                     if (message.subtype == OP.CHANNEL_JOIN):
@@ -193,7 +194,7 @@ class Client:
         try:
             messageByte = pickle.dumps(message)
             self.mySocket.send(messageByte)
-            # print("%s Message Sent: [%s:%s] %s" % (Helper.STR_INFO, message.category, message.subtype, message.content))
+            # print("%s Message Sent: [%s:%s] %s" % (OP.STR_INFO, message.category, message.subtype, message.content))
         except (ConnectionResetError, OSError) as e:
             print("Unable to send to server")
             if message.category == OP.MSG_QUIT:
