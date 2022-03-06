@@ -72,7 +72,7 @@ class Client:
         try:
             bytes = self.mySocket.recv(OP.PACKET_SIZE)
             message = pickle.loads(bytes)
-            print("%s Received %s" % (OP.STR_INFO, message))
+            # print("%s Received %s" % (OP.STR_INFO, message))
             if (isinstance(message, Message)):
                 return message
             else:
@@ -127,6 +127,8 @@ class Client:
                 message = self.receiveMessage()
                 if (not message):
                     return
+                # prefix string shown to user in the case of messages from the server/control messages
+                # not used when it is a text message from another user
                 serverResponse = "%s | %s: " % (message.timeSent, message.sender)
                 # we have a plain ol' text chat message from someone
                 if (message.category == OP.MSG_TEXT):
@@ -147,9 +149,6 @@ class Client:
                         textString = message.content
                         print("[Whisper] %s %s: %s" % (timeSent, sender, textString))
                 elif (message.category == OP.MSG_INFO):
-                    if (message.subtype == OP.INFO_USERS and message.status == OP.SIG_FAIL):
-                        print("Channel %s does not exist on the server." % message.content)
-                        continue
                     print(serverResponse + message.content)
                 elif (message.category == OP.MSG_CHANNEL):
                     if (message.subtype == OP.CHANNEL_JOIN):

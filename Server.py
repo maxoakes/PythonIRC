@@ -295,8 +295,9 @@ class Server:
                 if message.content != "":
                     targetChannel = message.content
                     if targetChannel not in self.channels.keys():
+                        failString = "Channel %s does not exist" % message.content
                         self.sendMessage(
-                        Message(self.serverName, OP.MSG_INFO, OP.INFO_USERS, OP.SIG_FAIL, targetChannel),
+                        Message(self.serverName, OP.MSG_INFO, OP.INFO_USERS, OP.SIG_FAIL, failString),
                             clientsocket
                         )
                         return
