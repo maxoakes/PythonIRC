@@ -1,6 +1,6 @@
 # Python-based IRC
 
-Complete with channels and private messages.
+Complete with channels and private messages. Written in Python 3.10.2. Switch statements were used! They require 3.10.
 
 See rfc.txt for details.
 
