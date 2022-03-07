@@ -2,6 +2,8 @@
 
 Complete with channels and private messages. Written in Python 3.10.2. Switch statements were used! They require 3.10.
 
+Added an AutoClient to spam the server every n seconds. Server seems to function with with 5 clients of varying speeds. two of which message every 0.01 seconds. To create an Autoclient, do `py main.py auto <float>`
+
 See rfc.txt for details.
 
 # Basic Criteria

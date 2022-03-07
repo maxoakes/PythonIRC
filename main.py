@@ -1,6 +1,15 @@
+import sys
+import threading
 from Client import Client
+from AutoClient import AutoClient
 
 def main():
+    isAutoClient = False
+    freq = 1
+    if (len(sys.argv) == 3):
+        if sys.argv[1] == "auto":
+            isAutoClient = True
+            freq = sys.argv[2]
     full_addr = input("Server address: ")
     
     #obtain host and port
@@ -15,7 +24,10 @@ def main():
     except IndexError:
         print("default port " + str(port) + " will be used")
     print("Entered address and port:", destination, port)
-    myClient = Client(destination, port, "New User")
+    if isAutoClient:
+        robo = AutoClient(destination, port, "robot", freq)
+    else:
+        myClient = Client(destination, port, "New User")
 
 if __name__ == '__main__':
     main()

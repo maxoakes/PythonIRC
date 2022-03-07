@@ -103,7 +103,7 @@ class Server:
             Message(self.serverName, OP.MSG_CHANNEL, OP.CHANNEL_JOIN, OP.SIG_SUCCESS, channel),
             self.activeUsers[user].socket
         )
-        self.handleTerminalCommands("channels")
+        # self.handleTerminalCommands("channels")
         
     def removeUserFromChannel(self, user, channel):
         self.channels[channel].leaveChannel(user)
@@ -113,12 +113,12 @@ class Server:
             Message(self.serverName, OP.MSG_CHANNEL, OP.CHANNEL_LEAVE, OP.SIG_SUCCESS, channel),
             self.activeUsers[user].socket
         )
-        self.handleTerminalCommands("channels")
+        # self.handleTerminalCommands("channels")
 
     def createChannel(self, name, creator, desc, canBeDeleted=True):
         self.channels[name] = Channel(name, creator, canBeDeleted)
         self.channels[name].setDescription(desc)
-        self.handleTerminalCommands("channels")
+        # self.handleTerminalCommands("channels")
 
     ###########################################################
     # Message Receiving and Handling
@@ -198,7 +198,7 @@ class Server:
     def receiveMessage(self, usersocket):
         bytes = usersocket.recv(OP.PACKET_SIZE)
         message = pickle.loads(bytes)
-        print("%s Received %s" % (OP.STR_INFO, message))
+        # print("%s Received %s" % (OP.STR_INFO, message))
         return message
 
     ###########################################################
@@ -253,7 +253,7 @@ class Server:
     def sendMessage(self, message, socket):
         messageByte = pickle.dumps(message)
         socket.send(messageByte)
-        print("%s Sent %s" % (OP.STR_INFO, message))
+        # print("%s Sent %s" % (OP.STR_INFO, message))
         return
     
     ###########################################################
