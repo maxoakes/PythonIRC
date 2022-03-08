@@ -117,7 +117,6 @@ class Server:
 
     def createChannel(self, name, creator, desc, canBeDeleted=True):
         self.channels[name] = Channel(name, creator, canBeDeleted)
-        self.channels[name].setDescription(desc)
         # self.handleTerminalCommands("channels")
 
     ###########################################################
@@ -225,16 +224,17 @@ class Server:
 
     # Attempt to send a message from one client to the other
     def whisper(self, message):
+        sourceSocket = self.activeUsers[message.sender].socket
         if message.subtype in self.activeUsers.keys():
             targetSocket = self.activeUsers[message.subtype].socket
         else:
             print("%s User tried to whisper person that does not exist" % OP.STR_INFO)
-            sourceSocket = self.activeUsers[message.sender].socket
             self.sendMessage(
                 Message(self.serverName, OP.MSG_WHISPER, OP.NO_SUBTYPE, OP.SIG_FAIL, message.subtype),
                 sourceSocket
             )
             return
+        # Send whisper message
         try:
             self.sendMessage(
                 Message(message.sender, OP.MSG_WHISPER, OP.NO_SUBTYPE, OP.SIG_SUCCESS, message.content),
@@ -242,12 +242,18 @@ class Server:
             )
         except:
             print("Failed to service a whisper")
-            sourceSocket = self.activeUsers[message.sender].socket
             self.sendMessage(
                 Message(self.serverName, OP.MSG_WHISPER, OP.NO_SUBTYPE, OP.SIG_FAIL, message.subtype),
                 sourceSocket
             )
-            self.unregisterUser(message.subtype)                
+        # Send copy/echo message back to sender indicating the whisper worked
+        try:
+            self.sendMessage(
+                Message(message.sender, OP.MSG_WHISPER, OP.NO_SUBTYPE, OP.SIG_SUCCESS, message.content),
+                sourceSocket
+            )
+        except:
+            print("Failed to service a whisper echo")
 
     # Package and send message to destination client
     def sendMessage(self, message, socket):

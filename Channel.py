@@ -2,7 +2,6 @@ import time
 
 class Channel:
     name = "__default__"
-    description = "This is a channel where we can all listen to eachother."
     createdBy = ""
     createTime = -1
     canBeDeleted = True
@@ -15,9 +14,6 @@ class Channel:
         if (canBeDeleted is not None):
             self.canBeDeleted = canBeDeleted
         self.currentUsers = []
-
-    def setDescription(self, desc):
-        self.description = desc
     
     def joinChannel(self, joiner):
         self.currentUsers.append(joiner)
