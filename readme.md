@@ -4,6 +4,8 @@ Complete with channels and private messages. Written in Python 3.10.2. Switch st
 
 Added an AutoClient to spam the server every n seconds. Server seems to function with with 5 clients of varying speeds. two of which message every 0.01 seconds. To create an Autoclient, do `py main.py auto <float>`
 
+Server file was deployed to a server that is 50ms away (Chicago), and it successfully handled 4 concurrent autoclients spamming messages every 0.1 seconds. Actual capacity likely far, far more.
+
 See rfc.txt for details.
 
 # Basic Criteria
