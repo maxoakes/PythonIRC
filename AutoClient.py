@@ -181,6 +181,9 @@ class AutoClient:
                                         if (message.content in self.shoutChannels):
                                             self.shoutChannels.remove(message.content)
                                         print(serverResponse + "Successfully left " + message.content)
+                                        if self.targetChannel == message.content:
+                                            print("Left talking channel. Use '/talk' <channel name> to choose a new default channel")
+                                            self.targetChannel = ""
                                         continue
                             # Create channel successful
                             case OP.CHANNEL_CREATE:

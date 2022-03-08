@@ -117,6 +117,7 @@ class Client:
             print("Joined %s" % message.content)
             self.listeningChannels.append(message.content)
             self.targetChannel = message.content
+            self.shoutChannels.append(message.content)
             return True
         return False
             
@@ -169,7 +170,11 @@ class Client:
                                         self.listeningChannels.remove(message.content)
                                         if (message.content in self.shoutChannels):
                                             self.shoutChannels.remove(message.content)
+                                            print("Removed %s from your shout channel list" % message.content)
                                         print(serverResponse + "Successfully left " + message.content)
+                                        if self.targetChannel == message.content:
+                                            print("Left talking channel. Use '/talk' <channel name> to choose a new default channel")
+                                            self.targetChannel = ""
                                         continue
                             # Create channel successful
                             case OP.CHANNEL_CREATE:
@@ -299,6 +304,8 @@ class Client:
                     if components[1] in self.listeningChannels:
                         self.targetChannel = components[1]
                         print("Talking channel set to %s" % self.targetChannel)
+                    else:
+                        print("You are not listening to %s. Join that channel if you wish to talk in it." % components[1])
                 case _:
                     print("Unknown command. Refer to /help.")
         except ConnectionResetError as e:
