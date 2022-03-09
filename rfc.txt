@@ -228,7 +228,7 @@ It is possible to send messages directly to one client, ignoring channels.
 
 /whisper <username> <text>
 
-When the command is submitted, the server will respond back to the sender notifying the user that the message could not be delivered, if that is the case. If the message was successfully delivered, both the sender and destination client will recieve the message and display the text content in chat. The target client does not need to be in any shared channels, they just need to be in the server at the same time.
+When the command is submitted, the server will respond back to the sender notifying the user that the message could not be delivered, if that is the case. If the message was successfully delivered, both the sender and destination client will receive the message and display the text content in chat. The target client does not need to be in any shared channels, they just need to be in the server at the same time.
 
 3.4.4 Server Information
 
@@ -237,7 +237,7 @@ One general command allows querying of the server for information for the user.
 /info <users> [channel name]
 /info <channels>
 
-For "/info users", the client will send a MSG_INFO message to the server to query the list of users in the server. Optionally, the user can input a channel name. No matter the valid input, the server will send back a message with content in a user-readable format, and the content will be displayed for the user. If the user did not specify a channel, the message will contain a list of all of the clients in the server. If the user did specify a channel, the list returned will contain only the list of clients in that channel. No matter the valid input's reponse, the content's string will also contain the number of users in the list that was returned.
+For "/info users", the client will send a MSG_INFO message to the server to query the list of users in the server. Optionally, the user can input a channel name. No matter the valid input, the server will send back a message with content in a user-readable format, and the content will be displayed for the user. If the user did not specify a channel, the message will contain a list of all of the clients in the server. If the user did specify a channel, the list returned will contain only the list of clients in that channel. No matter the valid input's response, the content's string will also contain the number of users in the list that was returned.
 
 For "/info channels", the client will send a message to the server asking for the channel list of the server. The response will always be a success and the content of the response message will be a user-readable string of the channel names.
 
@@ -255,7 +255,7 @@ The server application performs most of the processing of all of the client's qu
 
 4.1. Initialization
 
-Upon server instantiation, the server requires a hostname, port and display name. The hostname and port are used to create the server socket, and listening port for acquiring clients. If a port is not specified, the default port 7778 will be used. The server will then initialize a hashtable of channels and a hashtable of clients. The server will then start listening for connecting clients, and the first channel will be created called the "Lobby", and be added to the channel list.
+Upon server instantiation, the server requires a hostname, port and display name. The hostname and port are used to create the server socket, and listening port for acquiring clients. If a port is not specified, the default port 7778 will be used. The server will then initialize a hash table of channels and a hash table of clients. The server will then start listening for connecting clients, and the first channel will be created called the "Lobby", and be added to the channel list.
 
 4.2. Listening
 
@@ -267,7 +267,7 @@ When a client connects to the server, a new thread will be created for them. The
 
 Upon client connection, the dedicated client thread will be listening for a message with the MSG_NAME category. The content field in this message will contain the username for the client. Upon receiving the message, the server will check that the username is valid, meaning that the name contains alphanumeric characters only and no spaces, AND that it is not already in use. The server will then send a MSG_NAME message back to the user with the response status of SIG_SUCCESS, SIG_USED, SIG_INVALID. If the response given back to the client is SIG_INVALID or SIG_USED, the server will continue to listen for a username.
 
-When a username is valid, the SIG_SUCCESS message will be sent to the client, and the server will create a new object to house the client's information (primarily its socket information, active channels, and username). This new client object will be added to the client hashtable of the server as a value, and the username as a key. This new client will also be added to the default channel, Lobby. This process is called "Registration".
+When a username is valid, the SIG_SUCCESS message will be sent to the client, and the server will create a new object to house the client's information (primarily its socket information, active channels, and username). This new client object will be added to the client hash table of the server as a value, and the username as a key. This new client will also be added to the default channel, Lobby. This process is called "Registration".
 
 4.2.2. Listening for Messages from Existing Clients
 
@@ -299,13 +299,13 @@ In the case of a client leaving a channel, the client object local to the server
 
 Both of these channel joining and leaving functions are 'atomic', so any joining or leaving actions will result in correct modification of the channel's client list, and the client's channel list.
 
-In the case of channel creation, the message's content field will be read to get the name of the channel to be created, and the new channel will be added to the server's local channel hashtable. The channel object will be the value, and the name of the channel will be the key. A message will then be sent to the client that the operation was successful.
+In the case of channel creation, the message's content field will be read to get the name of the channel to be created, and the new channel will be added to the server's local channel hash table. The channel object will be the value, and the name of the channel will be the key. A message will then be sent to the client that the operation was successful.
 
-For room deletion, the equivalent process will take place; the channel will be removed from the local hashtable, and the client will be notified of successful deletion. If any clients are still in the channel that is being deleted, the action will fail and the client will be notified that it cannot be deleted.
+For room deletion, the equivalent process will take place; the channel will be removed from the local hash table, and the client will be notified of successful deletion. If any clients are still in the channel that is being deleted, the action will fail and the client will be notified that it cannot be deleted.
 
 4.4.2. Client Quitting
 
-In the event a client sends a MSG_QUIT message, the server will access the local client's channel list, and remove the client from each of the channel object's client lists. The client will then be removed from the client hashtable. When this message is received from the client, it is assumed that the client is taking its own steps to stop the client application process.
+In the event a client sends a MSG_QUIT message, the server will access the local client's channel list, and remove the client from each of the channel object's client lists. The client will then be removed from the client hash table. When this message is received from the client, it is assumed that the client is taking its own steps to stop the client application process.
 
 When the client sends an EOF packet to the server, the server will end the dedicated thread function of listening to that client, then join with the main thread. This entire process is called "unregistering".
 
@@ -313,9 +313,9 @@ When the client sends an EOF packet to the server, the server will end the dedic
 
 In the event a client sends a message of category MSG_INFO, the server will be looking at the current state of its client list or channel list.
 
-If the subtype is INFO_CHANNELS, the local channel hashtable's keys will be read, and a new message will be sent to the client with a user-readable list of channel names in the content field.
+If the subtype is INFO_CHANNELS, the local channel hash table's keys will be read, and a new message will be sent to the client with a user-readable list of channel names in the content field.
 
-If the subtype is INFO_USERS, the content field will be checked. If the content field is blank, the client is asking for a list of clients connected to the server. The client hashtable's keys will be read, and written to a message that will be sent to the inquiring client. If the client field has a valid channel name, the specified channel will have its user list read, and the server will create a message containing the list of client usernames in that channel, and send it to the inquiring client.
+If the subtype is INFO_USERS, the content field will be checked. If the content field is blank, the client is asking for a list of clients connected to the server. The client hash table's keys will be read, and written to a message that will be sent to the inquiring client. If the client field has a valid channel name, the specified channel will have its user list read, and the server will create a message containing the list of client usernames in that channel, and send it to the inquiring client.
 
 4.5. Server-side commands
 
@@ -325,10 +325,10 @@ After the client listening thread is created, the main thread is still running. 
 
 5.1 Channel Structure
 
-Within the server, a hashtable of channels is kept. This hashtable is created before any clients can join the server. These channels are represented as a channel object. This object contains the following fields:
+Within the server, a hash table of channels is kept. This hash table is created before any clients can join the server. These channels are represented as a channel object. This object contains the following fields:
 
     a. Name
-        The user-readable name of the channel. It is the primary identifier of the channel, and the key for the hashtable for a channel.
+        The user-readable name of the channel. It is the primary identifier of the channel, and the key for the hash table for a channel.
     b. Created by
         This is a string of the client's username that created the channel. Used for informational purposes only, and filled in automatically upon channel creation.
     c. Create time
@@ -347,14 +347,14 @@ There are two functions within a channel
 
 6. Server-side Client Structure
 
-A hashtable of clients is kept server-side as a way to track what channels a client is in, and what socket each client belongs to. When a client connects to the server, a new object is created for the client, and the username, and network/socket information is kept in this object, along with channel information. A server-sider client object contains the following fields:
+A hash table of clients is kept server-side as a way to track what channels a client is in, and what socket each client belongs to. When a client connects to the server, a new object is created for the client, and the username, and network/socket information is kept in this object, along with channel information. A server-sider client object contains the following fields:
 
     a. Address
         The address that the client is connected from
     b. Port
         The port that the server-side socket is connected to for this client
     c. Username
-        The name that the client picked for itself. In the hashtable storing the clients, this is the key, and the value is this entire client object
+        The name that the client picked for itself. In the hash table storing the clients, this is the key, and the value is this entire client object
     d. connectTime
         A string of the full date and time that the client connected to the server
     e. socket
@@ -376,7 +376,7 @@ Many small enhancements can be done to this protocol. Firstly, the private messa
 
 Additionally, whether the client has private messages go through the server or directly to the target client, the messages could be encrypted in some way. Currently, they are in plain text.
 
-Another possible improvement is with the 'timeSent' field of messages. Currently they are meant to be displayed as-is to recipient clients in chat, and encoded as a string in format HH:MM:SS. An alternative is to have the timeSent field be milliseconds from some date/time, and it would be up to the client to interpret that. This would allow users to see the correct times if users are in different time-zones. It would also allow the showing of dates, in instances were an IRC might be running over the course of days with slow chat traffic.
+Another possible improvement is with the 'timeSent' field of messages. Currently they are meant to be displayed as-is to recipient clients in chat, and encoded as a string in format HH:MM:SS. An alternative is to have the timeSent field be milliseconds from some date/time, and it would be up to the client to interpret that. This would allow users to see the correct times if users are in different time-zones. It would also allow the showing of dates, in instances where an IRC might be running over the course of days with slow chat traffic.
 
 9. Security Considerations
  
@@ -384,7 +384,7 @@ As mentioned in the previous section, messages sent using this system have no pr
 
 However, it is worth noting that IP addresses of clients are hidden from one another. For some, having an IP address exposed to others can be unsettling. In this protocol, the server maintains all IP addresses, but each client knows only usernames, and there is no way for a client to get another client's IP address without the server sending that information itself.
 
-This protcol does not account for modified versions of the client. In the version described in this document, it would be possible to have a malious client connect and send any type of packet to the server. A possible improvement to be made would be some type of checksum that the client sends to the server upon connection. If the checksum is valid, the client has a verified/clean version of the client and can continue to connect to the server, otherwise the server could terminate the connection to the modified client immediately.
+This protocol does not account for modified versions of the client. In the version described in this document, it would be possible to have a malicious client connect and send any type of packet to the server. A possible improvement to be made would be some type of checksum that the client sends to the server upon connection. If the checksum is valid, the client has a verified/clean version of the client and can continue to connect to the server, otherwise the server could terminate the connection to the modified client immediately.
  
 10. IANA Considerations 
  
