@@ -7,42 +7,42 @@ This memo describes the communication protocol for an IRC-style client/server sy
 
 Table of Contents
 1. Introduction
-1.1 Definitions
-1.1.1 Server
-1.1.2 Client
-1.1.3 Message
-1.1.4 Channels
+  1.1 Definitions
+    1.1.1 Server
+    1.1.2 Client
+    1.1.3 Message
+    1.1.4 Channels
 2. Message Structure
-2.1. Message Object
-2.2. Message Fields
-2.3. OP Codes
-2.4. Usage and Example
+  2.1. Message Object
+  2.2. Message Fields
+  2.3. OP Codes
+  2.4. Usage and Example
 3. The Client
-3.1. Login
-3.2. Listening
-3.3. Chatting
-3.4. Commands
-3.4.1 Channels
-3.4.2 Channel Selecting
-3.4.3 Private Messages
-3.4.4 Server Information
-3.4.5 Quitting
-3.4.6 Aliases
+  3.1. Login
+  3.2. Listening
+  3.3. Chatting
+  3.4. Commands
+    3.4.1 Channels
+    3.4.2 Channel Selecting
+    3.4.3 Private Messages
+    3.4.4 Server Information
+    3.4.5 Quitting
+    3.4.6 Aliases
 4. The Server
-4.1. Initialization
-4.2. Listening
-4.2.1. Listening for New Clients
-4.2.2. Listening for Messages from Existing Clients
+  4.1. Initialization
+  4.2. Listening
+    4.2.1. Listening for New Clients
+    4.2.2. Listening for Messages from Existing Clients
 4.3. Handling Client Messages
-4.3.1. Text Chat
-4.3.2. Whispers
-4.4. Non-Text Commands
-4.4.1. Channel Management
-4.4.2. Client Quitting
-4.4.3. Table Information
-4.5. Server-side commands
+    4.3.1. Text Chat
+    4.3.2. Whispers
+  4.4. Non-Text Commands
+    4.4.1. Channel Management
+    4.4.2. Client Quitting
+    4.4.3. Table Information
+  4.5. Server-side commands
 5. Channels
-5.1 Channel Structure
+  5.1 Channel Structure
 6. Server-side Client Structure
 7. Error Handling
 8. Conclusion & Future Work
